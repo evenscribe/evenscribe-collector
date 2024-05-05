@@ -1,11 +1,9 @@
+#include <clickhouse/client.h>
 #include <errno.h>
-#include <stdio.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <unistd.h>
-#include <iostream>
-#include <clickhouse/client.h>
 
 #define BUFFER_SIZE 100
 #define SOCKET_PATH "/tmp/olympus_socket.sock"
@@ -48,7 +46,6 @@ int main(int argc, char *argv[]) {
             socket_file_descriptor, strerror(errno));
   }
 
-
   ssize_t numRead;
   char buf[BUFFER_SIZE];
   for (;;) {
@@ -57,17 +54,16 @@ int main(int argc, char *argv[]) {
     printf("Accepted socket fd = %d\n", cfd);
 
     while ((numRead = read(cfd, buf, BUFFER_SIZE)) > 0) {
-        {
-            Block block;
+      {
+        Block block;
 
-            auto name = std::make_shared<ColumnString>();
-            name->Append(buf);
+        auto name = std::make_shared<ColumnString>();
+        name->Append(buf);
 
-            block.AppendColumn("message", name);
+        block.AppendColumn("message", name);
 
-            client.Insert("default.my_first_table", block);
-        }
-
+        client.Insert("default.my_first_table", block);
+      }
 
       if (write(STDOUT_FILENO, buf, numRead) != numRead) {
         fprintf(stderr, "%s", "ERROR: Cannot write");
