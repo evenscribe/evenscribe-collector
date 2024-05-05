@@ -8,10 +8,8 @@
 #define BUFFER_SIZE 100
 #define SOCKET_PATH "/tmp/olympus_socket.sock"
 
-using namespace clickhouse;
-
 int main(int argc, char *argv[]) {
-  Client client(ClientOptions().SetHost("localhost"));
+  clickhouse::Client client(clickhouse::ClientOptions().SetHost("localhost"));
 
   struct sockaddr_un addr;
 
@@ -55,9 +53,9 @@ int main(int argc, char *argv[]) {
 
     while ((numRead = read(cfd, buf, BUFFER_SIZE)) > 0) {
       {
-        Block block;
+        clickhouse::Block block;
 
-        auto name = std::make_shared<ColumnString>();
+        auto name = std::make_shared<clickhouse::ColumnString>();
         name->Append(buf);
 
         block.AppendColumn("message", name);
