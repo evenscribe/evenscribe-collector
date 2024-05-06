@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD 17)
 
 add_subdirectory(deps/clickhouse-cpp)
 
-add_executable(${PROJECT_NAME} main.cpp)
+add_executable(${PROJECT_NAME} main.cpp socket.cpp persistence.cpp param.h)
 
 target_include_directories(${PROJECT_NAME} PRIVATE deps/clickhouse-cpp deps/clickhouse-cpp/contrib/absl)
 
