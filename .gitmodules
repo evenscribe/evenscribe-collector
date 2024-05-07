@@ -1,0 +1,6 @@
+[submodule "include/json"]
+	path = include/json
+	url = https://github.com/nlohmann/json.git
+[submodule "include/clickhouse-cpp"]
+	path = include/clickhouse-cpp
+	url = https://github.com/ClickHouse/clickhouse-cpp.git
