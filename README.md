@@ -1,13 +1,23 @@
 # Olympus-Observatory
 
-Server implementation for Olympus Observatory
+Server implementation for Olympus Observatory.
 
-<h3>Building Project</h3>
+## Requirements:
+- [Cmake](https://cmake.org/)
+- [Make](https://www.gnu.org/software/make/)
+- [Clickhouse](https://clickhouse.com/)
+
+### Starting Clickhouse Server
 ```bash
-make -B build
+clickhouse server
 ```
 
-<h3>Run Executable</h3>
+### Building Project
+```bash
+make dev
+```
+
+### Run Executable
 ```bash
 make run
 ```
