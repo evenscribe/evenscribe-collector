@@ -14,7 +14,6 @@
 class Socket {
 private:
   int server_socket;
-  std::string socket_path;
   struct sockaddr_un addr;
 
   void _sanitize() {
@@ -35,17 +34,17 @@ private:
   void _listen() { listen(server_socket, MAXIMUM_CONNECTIONS); }
 
 public:
-  Socket(std::string socket_path) {
+  Socket() {
     this->server_socket = socket(AF_UNIX, SOCK_STREAM, 0);
-    this->socket_path = socket_path;
 
     _sanitize();
     _bind();
     _listen();
   }
 
-  void handle_message(clickhouse::Client *client) {
+  void handle_message(PersistenceManager *persistence) {
     char buf[BUFFER_SIZE];
+    memset(buf, 0x00, BUFFER_SIZE);
 
     while (true) {
       std::cout << "\nWaiting to accept a connection...\n";
@@ -53,10 +52,10 @@ public:
 
       while (read(client_socket, buf, BUFFER_SIZE) > 0) {
         json j_object = Serializer::serialize(buf);
-        Persistence::save(client, "logs", j_object);
+        persistence->save(TABLE_NAME, j_object);
+        memset(buf, 0x00, BUFFER_SIZE);
+        std::cout << "Save success.\n";
       }
-
-      memset(buf, 0x00, BUFFER_SIZE);
     }
   }
 };

@@ -1,8 +1,9 @@
 #include "socket.cpp"
 
 int main() {
-  Socket socket = Socket("/tmp/olympus.sock");
+  Socket socket = Socket();
   clickhouse::Client client(
       clickhouse::ClientOptions().SetHost(CLICKHOUSE_HOST));
-  socket.handle_message(&client);
+  ClickhousePersistence persistence(&client);
+  socket.handle_message(&persistence);
 }
