@@ -3,6 +3,7 @@
 
 #include "param.h"
 #include "persistence.cpp"
+#include "serializer.cpp"
 #include <clickhouse/client.h>
 #include <iostream>
 #include <string.h>
@@ -44,15 +45,18 @@ public:
   }
 
   void handle_message(clickhouse::Client *client) {
-    int position;
     char buf[BUFFER_SIZE];
 
     while (true) {
       std::cout << "\nWaiting to accept a connection...\n";
       int client_socket = accept(server_socket, NULL, NULL);
-      while ((position = read(client_socket, buf, BUFFER_SIZE)) > 0) {
-        Persistence::save(client, "logs", "message", buf);
+
+      while (read(client_socket, buf, BUFFER_SIZE) > 0) {
+        json j_object = Serializer::serialize(buf);
+        Persistence::save(client, "logs", j_object);
       }
+
+      memset(buf, 0x00, BUFFER_SIZE);
     }
   }
 };
