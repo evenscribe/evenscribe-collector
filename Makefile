@@ -1,5 +1,7 @@
 dev:
 	cmake --build build
+	./docker.sh
+	make run
 
 clean:
 	rm -rf build
