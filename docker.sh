@@ -50,6 +50,7 @@ else
                 -v $(realpath $MIGRATION_SCRIPT):/docker-entrypoint-initdb.d/init-db.sh \
                 -p 19000:9000 \
                 -p 8123:8123 \
+                -p 9440:9440 \
                 --name $CONTAINER_NAME \
                 --ulimit nofile=262144:262144 \
                 clickhouse/clickhouse-server >/dev/null 2>&1
