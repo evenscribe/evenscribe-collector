@@ -8,7 +8,7 @@ MIGRATION_SCRIPT="./init-db.sh"
 CONTAINER_NAME="clickhouse-db"
 IMAGE_NAME="clickhouse/clickhouse-server"
 
-if [ -d $path ]; then
+if [ -d $C_PATH ]; then
     echo "Mount path exists."
     if [ "$1" = "--clean" ]; then
         echo "Cleaning mount path...."
@@ -52,7 +52,7 @@ else
                 -p 8123:8123 \
                 --name $CONTAINER_NAME \
                 --ulimit nofile=262144:262144 \
-                clickhouse/clickhouse-server >/dev/null 2>&1
+                clickhouse/clickhouse-server
             echo "$CONTAINER_NAME started.\n"
         fi
 fi

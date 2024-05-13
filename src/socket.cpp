@@ -51,8 +51,8 @@ public:
       int client_socket = accept(server_socket, NULL, NULL);
 
       while (read(client_socket, buf, BUFFER_SIZE) > 0) {
-        json j_object = Serializer::serialize(buf);
-        persistence->save(TABLE_NAME, j_object);
+        LogEntry entry = Serializer::serialize(buf);
+        persistence->save(TABLE_NAME, entry);
         memset(buf, 0x00, BUFFER_SIZE);
         std::cout << "Save success.\n";
       }
@@ -60,4 +60,4 @@ public:
   }
 };
 
-#endif
+#endif // !SOCKET

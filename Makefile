@@ -1,6 +1,7 @@
 dev:
 	cmake --build build
 	./docker.sh
+	sleep 2
 	make run
 
 clean:

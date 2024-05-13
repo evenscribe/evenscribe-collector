@@ -3,4 +3,4 @@
 #define SOCKET_PATH "/tmp/olympus_socket.sock"
 #define CLICKHOUSE_HOST "localhost"
 #define CLICKHOUSE_PORT 19000
-#define TABLE_NAME "logs"
+#define TABLE_NAME "Log"
