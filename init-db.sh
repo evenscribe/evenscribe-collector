@@ -2,10 +2,13 @@
 set -e
 
 clickhouse client -n <<-EOSQL
-    CREATE TABLE logs
+    CREATE TABLE Log
     (
-        message String,
+     timestamp      UInt64,
+     message        String,
+     log_owner      Tuple(host_name String, app_name String),
+     log_entry      Tuple(log_level String, message String),
     )
     ENGINE = MergeTree
-    PRIMARY KEY (message);
+    ORDER BY timestamp;
 EOSQL
