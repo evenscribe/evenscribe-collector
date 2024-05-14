@@ -4,6 +4,9 @@ dev:
 	sleep 2
 	make run
 
+t:
+	cmake --build build
+
 clean:
 	rm -rf build
 

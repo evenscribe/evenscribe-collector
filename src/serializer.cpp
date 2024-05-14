@@ -1,7 +1,6 @@
 #ifndef SERIALIZER
 #define SERIALIZER
 
-#include <iostream>
 #include <nlohmann/json.hpp>
 #include <string>
 
@@ -56,7 +55,6 @@ private:
 public:
   static LogEntry serialize(std::string source) {
     json parsed = json::parse(trim(source));
-    std::cout << parsed.dump(4);
     return parsed;
   }
 };
