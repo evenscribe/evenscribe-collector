@@ -7,11 +7,14 @@
 #include <clickhouse/client.h>
 #include <cstring>
 #include <iostream>
+#include <mutex>
 #include <pthread.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <unistd.h>
+
+inline std::mutex mtx;
 
 typedef struct {
   int client_socket;
@@ -25,18 +28,26 @@ inline void *process(void *ptr) {
 
   connection_t *conn;
   conn = (connection_t *)ptr;
-  char buf[BUFFER_SIZE];
-  memset(buf, 0x00, BUFFER_SIZE);
 
-  while (read(conn->client_socket, buf, BUFFER_SIZE) > 0) {
+  char buf[BUFFER_SIZE];
+
+  while (true) {
+    ssize_t bytes_read = read(conn->client_socket, buf, BUFFER_SIZE);
+
+    if (bytes_read <= 0) {
+      break;
+    }
+
     LogEntry entry = Serializer::serialize(buf);
+
+    mtx.lock();
     conn->persistence->save(TABLE_NAME, entry);
-    memset(buf, 0x00, BUFFER_SIZE);
+    mtx.unlock();
+
     std::cout << "Save success.\n";
   }
 
   close(conn->client_socket);
-  free(conn);
   pthread_exit(0);
 }
 
@@ -49,45 +60,62 @@ private:
     remove(SOCKET_PATH);
     memset(&addr, 0, sizeof(struct sockaddr_un));
     addr.sun_family = AF_UNIX;
-    strcpy(addr.sun_path, SOCKET_PATH);
+    strncpy(addr.sun_path, SOCKET_PATH, sizeof(addr.sun_path) - 1);
   }
 
   void _bind() {
     if (bind(server_socket, (struct sockaddr *)&addr,
              sizeof(struct sockaddr_un)) == -1) {
-      std::cout << "Error: bind to socket failed\n";
+      perror("Error: bind to socket failed");
       exit(1);
-    };
+    }
   }
 
-  void _listen() { listen(server_socket, MAXIMUM_CONNECTIONS); }
+  void _listen() {
+    if (listen(server_socket, MAXIMUM_CONNECTIONS) == -1) {
+      perror("Error: listen on socket failed");
+      exit(1);
+    }
+  }
 
 public:
   Socket() {
-    this->server_socket = socket(AF_UNIX, SOCK_STREAM, 0);
+    server_socket = socket(AF_UNIX, SOCK_STREAM, 0);
+    if (server_socket == -1) {
+      perror("Error: create socket failed");
+      exit(1);
+    }
 
     _sanitize();
     _bind();
     _listen();
   }
 
+  ~Socket() {
+    close(server_socket);
+    remove(SOCKET_PATH);
+  }
+
   void handle_message(PersistenceManager *persistence) {
     pthread_t thread;
-    connection_t *conn;
-
     while (true) {
       std::cout << "\nWaiting to accept a connection...\n";
 
-      conn = (connection_t *)malloc(sizeof(connection_t));
-      conn->client_socket = accept(server_socket, NULL, NULL);
-      conn->persistence = persistence;
-
-      if (conn->client_socket <= 0) {
-        free(conn);
-      } else {
-        pthread_create(&thread, 0, process, (void *)conn);
-        pthread_detach(thread);
+      int client_socket = accept(server_socket, NULL, NULL);
+      if (client_socket == -1) {
+        perror("Error: accept connection failed");
+        continue;
       }
+
+      connection_t *conn = new connection_t{client_socket, persistence};
+      if (pthread_create(&thread, nullptr, process, conn) != 0) {
+        perror("Error: create thread failed");
+        close(client_socket);
+        delete conn;
+        continue;
+      }
+
+      pthread_detach(thread);
     }
   }
 };

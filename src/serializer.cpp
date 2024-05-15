@@ -1,6 +1,7 @@
 #ifndef SERIALIZER
 #define SERIALIZER
 
+#include <iostream>
 #include <nlohmann/json.hpp>
 #include <string>
 

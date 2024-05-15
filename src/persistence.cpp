@@ -47,11 +47,15 @@ public:
                commaSeparate({
                    std::to_string(entry.timestamp),
                    wrap(entry._msg, "'"),
-                   between(commaSeparate({wrap(entry.log_owner.host_name, "'"), wrap(entry.log_owner.app_name, "'")}), "(", ")"),
-                   between(commaSeparate({wrap(entry.log.level, "'"), wrap(entry.log.message, "'")}), "(", ")"),
-               }), "(", ")\n")
-        << ";";
-    ;
+                   between(commaSeparate({wrap(entry.log_owner.host_name, "'"),
+                                          wrap(entry.log_owner.app_name, "'")}),
+                           "(", ")"),
+                   between(commaSeparate({wrap(entry.log.level, "'"),
+                                          wrap(entry.log.message, "'")}),
+                           "(", ")"),
+               }),
+               "(", ");");
+
     this->client->Execute(str.str());
   }
 };

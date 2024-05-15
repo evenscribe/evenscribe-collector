@@ -7,4 +7,5 @@ int main() {
                                 .SetPort(CLICKHOUSE_PORT));
   ClickhousePersistence persistence(&client);
   socket.handle_message(&persistence);
+  return 0;
 }
