@@ -10,19 +10,20 @@ using json = nlohmann::json;
 
 class PersistenceManager {
 public:
-  virtual void save(std::string table_name, LogEntry entry) const = 0;
+  virtual void save(const std::string table_name,
+                    const LogEntry &entry) const = 0;
 };
 
 class ClickhousePersistence : public PersistenceManager {
 private:
   clickhouse::Client *client;
 
-  static std::string wrap(std::string str, std::string wrap) {
+  static std::string wrap(const std::string &str, const std::string &wrap) {
     return wrap + str + wrap;
   }
 
-  static std::string between(std::string str, std::string start,
-                             std::string end) {
+  static std::string between(const std::string &str, const std::string &start,
+                             const std::string &end) {
     return start + str + end;
   }
 
@@ -38,9 +39,9 @@ private:
   }
 
 public:
-  ClickhousePersistence(clickhouse::Client *client) { this->client = client; }
+  explicit ClickhousePersistence(clickhouse::Client *client) : client(client) {}
 
-  void save(std::string table_name, LogEntry entry) const override {
+  void save(const std::string table_name, const LogEntry &entry) const override {
     std::stringstream str;
     str << "\nINSERT INTO " << table_name << " VALUES "
         << between(
