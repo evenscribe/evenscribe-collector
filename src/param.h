@@ -4,3 +4,4 @@
 #define CLICKHOUSE_HOST "localhost"
 #define CLICKHOUSE_PORT 19000
 #define TABLE_NAME "Log"
+#define THREADS 8
