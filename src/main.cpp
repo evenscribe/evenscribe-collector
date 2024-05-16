@@ -1,11 +1,8 @@
-#include "socket.cpp"
+#include "socket.h"
 
 int main() {
+  // NOTE: check param.h to see the configs for the socket and clickhouse
   Socket socket = Socket();
-  clickhouse::Client client(clickhouse::ClientOptions()
-                                .SetHost(CLICKHOUSE_HOST)
-                                .SetPort(CLICKHOUSE_PORT));
-  ClickhousePersistence persistence(&client);
-  socket.handle_message(&persistence);
+  socket.handle_message();
   return 0;
 }
