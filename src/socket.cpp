@@ -57,7 +57,6 @@ void process(void *arg) {
 }
 
 void *worker(void *arg) {
-  int count = 1;
   while (true) {
     int index = *((int *)arg);
     pthread_mutex_lock(&queue_mtx);
