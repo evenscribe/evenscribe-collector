@@ -1,20 +1,15 @@
 #ifndef SERVICE_H
 #define SERVICE_H
 
-#include <Carbon/Carbon.h>
-#include <assert.h>
+#include "helper.h"
 #include <cerrno>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <mach-o/dyld.h>
-#include <mach-o/swap.h>
-#include <mach/mach_time.h>
 #include <spawn.h>
-#include <sys/_types/_pid_t.h>
 #include <sys/fcntl.h>
 #include <sys/stat.h>
-#include <sys/wait.h>
 #include <unistd.h>
 
 #define MAXLEN 512
@@ -67,30 +62,6 @@
 //          3. Bootstrapped (Load / Unload)
 //          4. Running (Start / Stop)
 //
-
-static inline bool file_exists(char *filename) {
-  struct stat buffer;
-
-  if (stat(filename, &buffer) != 0) {
-    return false;
-  }
-
-  if (buffer.st_mode & S_IFDIR) {
-    return false;
-  }
-
-  return true;
-}
-
-static inline bool directory_exists(char *filename) {
-  struct stat buffer;
-
-  if (stat(filename, &buffer) != 0) {
-    return false;
-  }
-
-  return S_ISDIR(buffer.st_mode);
-}
 
 static int safe_exec(char *const argv[], bool suppress_output) {
   pid_t pid;

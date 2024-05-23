@@ -1,6 +1,7 @@
 #ifndef SOCKET
 #define SOCKET
 
+#include "config.h"
 #include <sys/un.h>
 
 class Socket {
@@ -13,7 +14,7 @@ private:
   void _listen();
 
 public:
-  Socket();
+  Socket(Config config);
   ~Socket();
   void handle_message();
 };

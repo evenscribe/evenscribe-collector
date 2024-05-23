@@ -1,4 +1,5 @@
 #include "socket.h"
+#include "log.h"
 #include "param.h"
 #include "query_generator.h"
 #include "serializer.h"
@@ -40,16 +41,16 @@ void process(void *arg) {
       db_connections[conn->thread_id].Execute(query);
       response = "OK";
     } catch (const std::exception &e) {
-      perror(e.what());
+      error(e.what());
       response = "NO";
     }
     if (write(conn->client_socket, response, sizeof(char) * 2) == -1) {
-      perror("Write error.");
+      error("Write error.");
     }
 
     std::cout << "Save success.\n";
   } else {
-    perror("Socket buffer read error.");
+    error("Socket buffer read error.");
   }
 
   close(conn->client_socket);
@@ -91,22 +92,22 @@ void Socket::_sanitize() {
 void Socket::_bind() {
   if (bind(server_socket, (struct sockaddr *)&addr,
            sizeof(struct sockaddr_un)) == -1) {
-    perror("Error: bind to socket failed");
+    error("Error: bind to socket failed");
     exit(1);
   }
 }
 
 void Socket::_listen() {
   if (listen(server_socket, MAXIMUM_CONNECTIONS) == -1) {
-    perror("Error: listen on socket failed");
+    error("Error: listen on socket failed");
     exit(1);
   }
 }
 
-Socket::Socket() {
+Socket::Socket(Config config) {
   server_socket = socket(AF_UNIX, SOCK_STREAM, 0);
   if (server_socket == -1) {
-    perror("Error: create socket failed");
+    error("Error: create socket failed");
     exit(1);
   }
 
@@ -115,9 +116,16 @@ Socket::Socket() {
   _listen();
 
   for (int i = 0; i < THREADS; ++i) {
-    new (&db_connections[i]) clickhouse::Client(clickhouse::ClientOptions()
-                                                    .SetHost(CLICKHOUSE_HOST)
-                                                    .SetPort(CLICKHOUSE_PORT));
+    try {
+      new (&db_connections[i])
+          clickhouse::Client(clickhouse::ClientOptions()
+                                 .SetHost(config.clickhouse_host)
+                                 .SetPort(config.clickhouse_port));
+    } catch (...) {
+      error("Connection to database failed. Please, check you config file and "
+            "ensure that the database is running.");
+      exit(1);
+    }
   }
 
   int i;
@@ -125,7 +133,7 @@ Socket::Socket() {
     int *a = (int *)malloc(sizeof(int));
     *a = i;
     if (pthread_create(&thread_pool[i], nullptr, *worker, a) != 0) {
-      perror("Error: create thread failed");
+      error("Error: create thread failed");
       exit(1);
     }
   }
@@ -155,7 +163,7 @@ void Socket::handle_message() {
     int client_socket = accept(server_socket, NULL, NULL);
 
     if (client_socket == -1) {
-      perror("Error: accept connection failed");
+      error("Error: accept connection failed");
       continue;
     }
 
