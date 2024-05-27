@@ -2,6 +2,7 @@
 #define CONFIG
 
 #include "helper.h"
+#include "log.h"
 #include <nlohmann/json.hpp>
 #include <stdio.h>
 #include <stdlib.h>

@@ -1,11 +1,14 @@
 #ifndef HELPER
 #define HELPER
 
-#include "log.h"
 #include "param.h"
 #include <cstdlib>
 #include <cstring>
 #include <sys/stat.h>
+
+static inline bool database_seed() {
+
+}
 
 static inline bool file_exists(char *filename) {
   struct stat buffer;
