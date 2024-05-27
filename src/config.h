@@ -82,9 +82,19 @@ static char *read_file(const char *filePath) {
 }
 
 static Config config_to_tuple() {
+  if (!config_file_exstis()) {
+    error("Config file doesn't exist : $HOME/.evenscriberc");
+    exit(1);
+  }
+
   char *path = get_config_file();
   char *contents = read_file(path);
-  return json::parse(contents);
+  try {
+    return json::parse(contents);
+  } catch (...) {
+    error("Error reading config file. Bad schema detected.");
+    exit(1);
+  }
 }
 
 #endif // ! CONFIG

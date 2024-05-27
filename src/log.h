@@ -55,4 +55,4 @@ static inline void debug_message(const char *prefix, char *message) {
   fflush(stdout);
 }
 
-#endif
+#endif // !Log

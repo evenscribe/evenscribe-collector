@@ -34,23 +34,23 @@ void process(void *arg) {
   char buf[BUFFER_SIZE];
 
   if (read(conn->client_socket, buf, BUFFER_SIZE) > 0) {
-    LogEntry entry = Serializer::serialize(buf);
+    Log entry = Serializer::serialize(buf);
     std::string query = QueryGenerator::query(TABLE_NAME, entry);
     const char *response;
     try {
       db_connections[conn->thread_id].Execute(query);
       response = "OK";
     } catch (const std::exception &e) {
-      error(e.what());
+      warn(e.what());
       response = "NO";
     }
     if (write(conn->client_socket, response, sizeof(char) * 2) == -1) {
-      error("Write error.");
+      warn("Write error.");
     }
 
     std::cout << "Save success.\n";
   } else {
-    error("Socket buffer read error.");
+    warn("Socket buffer read error.");
   }
 
   close(conn->client_socket);

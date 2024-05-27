@@ -1,12 +1,7 @@
 #include "config.h"
 #include "helper.h"
-#include "log.h"
 #include "service.h"
 #include "socket.h"
-#include <cstring>
-#include <iostream>
-
-#define DEBUG(x) std::cout << '>' << #x << ':' << x << '\n';
 
 #define SERVICE_START_OPT "--start-service"
 #define SERVICE_STOP_OPT "--stop-service"
@@ -21,18 +16,7 @@ static void parse_arguments(int argc, char **argv) {
 }
 
 int main(int argc, char **argv) {
-  if (!config_file_exstis()) {
-    error("Config file doesn't exist : $HOME/.evenscriberc");
-    exit(1);
-  }
-
-  Config config;
-  try {
-    config = config_to_tuple();
-  } catch (...) {
-    error("Error reading config file. Bad schema detected.");
-    exit(1);
-  }
+  Config config = config_to_tuple();
 
   if (argc > 1) {
     parse_arguments(argc, argv);

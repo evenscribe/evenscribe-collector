@@ -6,10 +6,6 @@
 #include <cstring>
 #include <sys/stat.h>
 
-static inline bool database_seed() {
-
-}
-
 static inline bool file_exists(char *filename) {
   struct stat buffer;
   if (stat(filename, &buffer) != 0) {
@@ -20,7 +16,6 @@ static inline bool file_exists(char *filename) {
   }
   return true;
 }
-
 
 static inline bool directory_exists(char *filename) {
   struct stat buffer;
