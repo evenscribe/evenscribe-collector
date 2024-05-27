@@ -3,24 +3,20 @@
 
 using json = nlohmann::json;
 
-void from_json(const json &j, LogOwner &log_owner) {
-  j.at("host_name").get_to(log_owner.host_name);
-  j.at("app_name").get_to(log_owner.app_name);
-}
-
 void from_json(const json &j, Log &log) {
-  j.at("level").get_to(log.level);
-  j.at("message").get_to(log.message);
+  j.at("Timestamp").get_to(log.Timestamp);
+  j.at("TraceId").get_to(log.TraceId);
+  j.at("SpanId").get_to(log.SpanId);
+  j.at("TraceFlags").get_to(log.TraceFlags);
+  j.at("SeverityText").get_to(log.SeverityText);
+  j.at("SeverityNumber").get_to(log.SeverityNumber);
+  j.at("ServiceName").get_to(log.ServiceName);
+  j.at("Body").get_to(log.Body);
+  j.at("ResourceAttributes").get_to(log.ResourceAttributes);
+  j.at("LogAttributes").get_to(log.LogAttributes);
 }
 
-void from_json(const json &j, LogEntry &log_entry) {
-  j.at("@timestamp").get_to(log_entry.timestamp);
-  j.at("_msg").get_to(log_entry._msg);
-  j.at("log").get_to(log_entry.log);
-  j.at("log_owner").get_to(log_entry.log_owner);
-}
-
-LogEntry Serializer::serialize(std::string source) {
+Log Serializer::serialize(std::string source) {
   json parsed = json::parse(source);
   return parsed;
 }
