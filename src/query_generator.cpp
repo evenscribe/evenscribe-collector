@@ -2,6 +2,7 @@
 #include "serializer.h"
 
 #include <sstream>
+#include <string>
 
 std::string wrap(const std::string &str, const std::string &wrap) {
   return wrap + str + wrap;
@@ -23,23 +24,38 @@ std::string commaSeparate(const std::vector<std::string> &arr) {
   return oss.str();
 }
 
-std::string getValues(const LogEntry &entry) {
+template <typename K, typename V>
+std::string unorderedMapToString(const std::unordered_map<K, V> &map) {
+  std::ostringstream oss;
+  oss << "{";
+  for (auto it = map.cbegin(); it != map.cend(); ++it) {
+    if (it != map.cbegin()) {
+      oss << ", ";
+    }
+    oss << wrap(it->first, "'") << ":" << wrap(it->second, "'");
+  }
+  oss << "}";
+  return oss.str();
+}
+
+std::string getValues(const Log &entry) {
+  // clang-format off
   return commaSeparate({
-      std::to_string(entry.timestamp),
-      wrap(entry._msg, "'"),
-      between("(",
-              commaSeparate({wrap(entry.log_owner.host_name, "'"),
-                             wrap(entry.log_owner.app_name, "'")}),
-              ")"),
-      between("(",
-              commaSeparate(
-                  {wrap(entry.log.level, "'"), wrap(entry.log.message, "'")}),
-              ")"),
-  });
+          between("toDateTime64(",wrap(entry.Timestamp, "'"),  ",9)"),
+          wrap(entry.TraceId, "'"),
+          wrap(entry.SpanId, "'"),
+          std::to_string(entry.TraceFlags),
+          wrap(entry.SeverityText, "'"),
+          std::to_string(entry.SeverityNumber),
+          wrap(entry.ServiceName, "'"),
+          wrap(entry.Body, "'"),
+          unorderedMapToString(entry.ResourceAttributes),
+          unorderedMapToString(entry.LogAttributes),
+          });
 }
 
 std::string QueryGenerator::query(const std::string table_name,
-                                  const LogEntry &entry) {
+                                  const Log &entry) {
   std::stringstream str;
   str << between("INSERT INTO ", table_name, " VALUES ")
       << between("(", getValues(entry), ");");

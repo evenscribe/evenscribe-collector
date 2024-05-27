@@ -5,6 +5,6 @@
 
 class QueryGenerator {
 public:
-  static std::string query(const std::string table_name, const LogEntry &entry);
+  static std::string query(const std::string table_name, const Log &entry);
 };
 #endif // !QUERY_GENERATOR
