@@ -3,6 +3,7 @@
 
 #include <sstream>
 #include <string>
+#include <vector>
 
 std::string wrap(const std::string &str, const std::string &wrap) {
   return wrap + str + wrap;

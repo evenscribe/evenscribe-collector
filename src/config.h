@@ -48,7 +48,7 @@ static inline bool config_file_exstis() {
 static char *read_file(const char *filePath) {
   FILE *file = fopen(filePath, "rb"); // Open the file in binary mode
   if (file == NULL) {
-    perror("Could not open file");
+    error("Could not open file");
     return NULL;
   }
 
@@ -60,7 +60,7 @@ static char *read_file(const char *filePath) {
   // Allocate memory to hold the file contents
   char *buffer = (char *)malloc(fileSize + 1);
   if (buffer == NULL) {
-    perror("Memory allocation failed");
+    error("Memory allocation failed");
     fclose(file);
     return NULL;
   }
@@ -68,7 +68,7 @@ static char *read_file(const char *filePath) {
   // Read the file into the buffer
   size_t bytesRead = fread(buffer, 1, fileSize, file);
   if (bytesRead != fileSize) {
-    perror("File read error");
+    error("File read error");
     free(buffer);
     fclose(file);
     return NULL;

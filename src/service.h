@@ -2,6 +2,7 @@
 #define SERVICE_H
 
 #include "helper.h"
+#include "log.h"
 #include <cerrno>
 #include <cstdio>
 #include <cstdlib>
@@ -97,13 +98,13 @@ static char *populate_plist_path(void) {
   char *home = getenv("HOME");
 
   if (!home) {
-    perror("evenscribe: unable to retrieve home directory! abort..\n");
+    error("evenscribe: unable to retrieve home directory! abort..\n");
   }
 
   int size = strlen(_PATH_EVENSCRIBE_PLIST) - 2 + strlen(home) + 1;
   char *result = (char *)malloc(size);
   if (!result) {
-    perror("evenscribe: could not allocate memory for plist path! abort..\n");
+    error("evenscribe: could not allocate memory for plist path! abort..\n");
   }
 
   memset(result, 0, size);
@@ -115,25 +116,25 @@ static char *populate_plist_path(void) {
 static char *populate_plist(int *length) {
   char *user = getenv("USER");
   if (!user) {
-    perror("evenscribe: 'env USER' not set! abort..\n");
+    error("evenscribe: 'env USER' not set! abort..\n");
   }
 
   char *path_env = getenv("PATH");
   if (!path_env) {
-    perror("evenscribe: 'env PATH' not set! abort..\n");
+    error("evenscribe: 'env PATH' not set! abort..\n");
   }
 
   char exe_path[4096];
   unsigned int exe_path_size = sizeof(exe_path);
   if (_NSGetExecutablePath(exe_path, &exe_path_size) < 0) {
-    perror("evenscribe: unable to retrieve path of executable! abort..\n");
+    error("evenscribe: unable to retrieve path of executable! abort..\n");
   }
 
   int size = strlen(_EVENSCRIBE_PLIST) - 8 + strlen(exe_path) +
              strlen(path_env) + (2 * strlen(user)) + 1;
   char *result = (char *)malloc(size);
   if (!result) {
-    perror(
+    error(
         "evenscribe: could not allocate memory for plist contents! abort..\n");
   }
 
@@ -187,7 +188,7 @@ static int service_start(void) {
   if (!file_exists(evenscribe_plist_path)) {
     int result = service_install_internal(evenscribe_plist_path);
     if (result) {
-      perror("evenscribe: service file '%s' could not be installed! abort..\n");
+      error("evenscribe: service file '%s' could not be installed! abort..\n");
     }
   }
 
@@ -243,7 +244,7 @@ static int service_start(void) {
 static int service_stop(void) {
   char *evenscribe_plist_path = populate_plist_path();
   if (!file_exists(evenscribe_plist_path)) {
-    perror("evenscribe: service file is not installed! abort..\n");
+    error("evenscribe: service file is not installed! abort..\n");
   }
 
   char service_target[MAXLEN];

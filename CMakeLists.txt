@@ -7,7 +7,6 @@ set(SOURCES
     src/main.cpp
     src/socket.cpp
     src/query_generator.cpp
-    src/param.h
     src/serializer.cpp
 )
 

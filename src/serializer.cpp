@@ -16,7 +16,4 @@ void from_json(const json &j, Log &log) {
   j.at("LogAttributes").get_to(log.LogAttributes);
 }
 
-Log Serializer::serialize(std::string source) {
-  json parsed = json::parse(source);
-  return parsed;
-}
+Log Serializer::serialize(std::string source) { return json::parse(source); }
