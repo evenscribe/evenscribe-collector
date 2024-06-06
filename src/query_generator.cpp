@@ -14,6 +14,11 @@ std::string between(const std::string &start, const std::string &str,
   return start + str + end;
 }
 
+std::string between(const std::string &start, const uint64_t &number,
+                    const std::string &end) {
+  return start + std::to_string(number) + end;
+}
+
 std::string commaSeparate(const std::vector<std::string> &arr) {
   std::ostringstream oss;
   if (!arr.empty()) {
@@ -42,7 +47,7 @@ std::string unorderedMapToString(const std::unordered_map<K, V> &map) {
 std::string getValues(const Log &entry) {
   // clang-format off
   return commaSeparate({
-          between("toDateTime64(",wrap(entry.Timestamp, "'"),  ",9)"),
+          between("toDateTime64(",entry.Timestamp,  ",9)"),
           wrap(entry.TraceId, "'"),
           wrap(entry.SpanId, "'"),
           std::to_string(entry.TraceFlags),

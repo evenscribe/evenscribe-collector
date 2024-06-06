@@ -5,7 +5,7 @@
 #include <unordered_map>
 
 struct Log {
-  std::string Timestamp; // DateTime64
+  uint32_t Timestamp;
   std::string TraceId;
   std::string SpanId;
   uint32_t TraceFlags;
