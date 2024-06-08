@@ -1,23 +1,51 @@
 #ifndef CONFIG
 #define CONFIG
 
+#include "cJSON.h"
 #include "helper.h"
 #include "log.h"
-#include <nlohmann/json.hpp>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string>
-
-using json = nlohmann::json;
 
 struct Config {
   std::string clickhouse_host;
   int clickhouse_port;
 };
 
-static void from_json(const json &j, Config &config) {
-  j.at("clickhouse_host").get_to(config.clickhouse_host);
-  j.at("clickhouse_port").get_to(config.clickhouse_port);
+static inline Config deserializeJsonToConfig(const std::string &jsonString) {
+  Config config;
+
+  // Parse the JSON string
+  cJSON *json = cJSON_Parse(jsonString.c_str());
+  if (json == nullptr) {
+    throw std::runtime_error("Error parsing Config JSON");
+  }
+
+  // Extract clickhouse_host from JSON object
+  cJSON *clickhouse_host =
+      cJSON_GetObjectItemCaseSensitive(json, "clickhouse_host");
+  if (!cJSON_IsString(clickhouse_host) ||
+      clickhouse_host->valuestring == nullptr) {
+    cJSON_Delete(json);
+    throw std::runtime_error(
+        "Error: clickhouse_host is missing or not a string");
+  }
+  config.clickhouse_host = clickhouse_host->valuestring;
+
+  // Extract clickhouse_port from JSON object
+  cJSON *clickhouse_port =
+      cJSON_GetObjectItemCaseSensitive(json, "clickhouse_port");
+  if (!cJSON_IsNumber(clickhouse_port)) {
+    cJSON_Delete(json);
+    throw std::runtime_error(
+        "Error: clickhouse_port is missing or not a number");
+  }
+  config.clickhouse_port = clickhouse_port->valuedouble;
+
+  cJSON_Delete(json);
+
+  return config;
 }
 
 static inline char *get_config_file() {
@@ -90,7 +118,7 @@ static Config config_to_tuple() {
   char *path = get_config_file();
   char *contents = read_file(path);
   try {
-    return json::parse(contents);
+    return deserializeJsonToConfig(contents);
   } catch (...) {
     error("Error reading config file. Bad schema detected.");
     exit(1);

@@ -8,6 +8,7 @@ set(SOURCES
     src/socket.cpp
     src/query_generator.cpp
     src/serializer.cpp
+    src/cJSON.c
 )
 
 add_executable(${PROJECT_NAME} ${SOURCES})
@@ -15,5 +16,3 @@ add_executable(${PROJECT_NAME} ${SOURCES})
 add_subdirectory(include/clickhouse-cpp-2.5.1)
 target_link_libraries(${PROJECT_NAME} PRIVATE clickhouse-cpp-lib)
 
-add_subdirectory(include/json-3.11.3)
-target_link_libraries(${PROJECT_NAME} PRIVATE nlohmann_json::nlohmann_json)
