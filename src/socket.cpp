@@ -219,16 +219,16 @@ Socket::Socket(Config config) {
         exit(1);
       }
     }
+    break;
   }
   case CLICKHOUSE: {
     free(postgres_db_connections);
 
     for (int i = 0; i < THREADS; ++i) {
       try {
-        new (&clickhouse_db[i])
-            clickhouse::Client(clickhouse::ClientOptions()
-                                   .SetHost(config.host)
-                                   .SetPort(config.port));
+        new (&clickhouse_db[i]) clickhouse::Client(clickhouse::ClientOptions()
+                                                       .SetHost(config.host)
+                                                       .SetPort(config.port));
       } catch (...) {
         error(
             "Connection to database failed. Please, check you config file and "
@@ -259,6 +259,7 @@ Socket::Socket(Config config) {
         exit(1);
       }
     }
+    break;
   }
   }
 }

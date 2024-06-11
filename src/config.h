@@ -42,7 +42,7 @@ static inline Config deserializeJsonToConfig(const std::string &jsonString) {
 
   // Extract clickhouse_host from JSON object
   cJSON *host =
-      cJSON_GetObjectItemCaseSensitive(json, "clickhouse_host");
+      cJSON_GetObjectItemCaseSensitive(json, "host");
   if (!cJSON_IsString(host) ||
       host->valuestring == nullptr) {
     cJSON_Delete(json);
@@ -53,7 +53,7 @@ static inline Config deserializeJsonToConfig(const std::string &jsonString) {
 
   // Extract clickhouse_port from JSON object
   cJSON *port =
-      cJSON_GetObjectItemCaseSensitive(json, "clickhouse_port");
+      cJSON_GetObjectItemCaseSensitive(json, "port");
   if (!cJSON_IsNumber(port)) {
     cJSON_Delete(json);
     throw std::runtime_error(
