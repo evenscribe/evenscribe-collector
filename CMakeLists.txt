@@ -4,14 +4,32 @@ project(OlympusObservatory)
 set(CMAKE_CXX_STANDARD 17)
 
 set(SOURCES
-    src/main.cpp
-    src/socket.cpp
-    src/serializer.cpp
     src/cJSON.c
+    src/clickhouse_persistence.cpp
+    src/clickhouse_query_generator.cpp
+    src/main.cpp
+    src/serializer.cpp
+    src/socket.cpp
+)
+
+set(HEADERS
+    src/cJSON.h
+    src/config.h
+    src/helper.h
+    src/log.h
+    src/param.h
+    src/persistence.h
+    src/query_generator.h
+    src/serializer.h
+    src/socket.h
 )
 
 add_executable(${PROJECT_NAME} ${SOURCES})
 
 add_subdirectory(include/clickhouse-cpp-2.5.1)
 target_link_libraries(${PROJECT_NAME} PRIVATE clickhouse-cpp-lib)
+
+add_subdirectory(include/taopq-1.0.0)
+target_link_libraries(${PROJECT_NAME} PRIVATE taopq)
+
 

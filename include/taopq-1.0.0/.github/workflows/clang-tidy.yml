@@ -1,0 +1,26 @@
+name: clang-tidy
+
+on:
+  push:
+    paths-ignore:
+      - 'README.md'
+      - 'doc/**'
+  pull_request:
+    paths-ignore:
+      - 'README.md'
+      - 'doc/**'
+
+jobs:
+  clang-tidy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - run: sudo apt-get update -yq
+
+    - run: sudo apt-get install -yq clang-tidy libpq-dev
+
+    - run: find include/ -name '*.hpp' | xargs -I '{}' clang-tidy --quiet '{}' -- --std=c++17 -Iinclude -I$(pg_config --includedir)
+
+    - run: find src/ -name '*.cpp' | xargs -I '{}' clang-tidy --quiet '{}' -- --std=c++17 -Iinclude -I$(pg_config --includedir)

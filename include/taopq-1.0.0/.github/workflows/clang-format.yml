@@ -1,0 +1,21 @@
+name: clang-format
+
+on:
+  push:
+    paths-ignore:
+      - 'README.md'
+      - 'doc/**'
+  pull_request:
+    paths-ignore:
+      - 'README.md'
+      - 'doc/**'
+
+jobs:
+  clang-format:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - uses: DoozyX/clang-format-lint-action@v0.17
+      with:
+        extensions: 'hpp,cpp'

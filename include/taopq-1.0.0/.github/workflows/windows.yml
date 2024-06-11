@@ -1,0 +1,120 @@
+name: Windows
+
+on:
+  push:
+    paths-ignore:
+      - 'README.md'
+      - 'doc/**'
+  pull_request:
+    paths-ignore:
+      - 'README.md'
+      - 'doc/**'
+
+jobs:
+  vs2022:
+    strategy:
+      fail-fast: false
+      matrix:
+        build_type: [Debug, Release]
+
+    runs-on: windows-latest
+
+    env:
+      TAOPQ_TEST_DATABASE: host=localhost dbname=postgres user=postgres password=postgres
+
+    steps:
+    - uses: actions/checkout@v4
+    - uses: ikalnytskyi/action-setup-postgres@v6
+
+    - run: cmake -E make_directory build
+
+    - shell: bash
+      working-directory: build/
+      run: cmake $GITHUB_WORKSPACE -G "Visual Studio 17 2022" -DPostgreSQL_ADDITIONAL_VERSIONS=14
+
+    - working-directory: build/
+      run: cmake --build . --config ${{ matrix.build_type }}
+
+    - working-directory: build/
+      run: ctest -C ${{ matrix.build_type }} --output-on-failure
+
+  vs2022-clang:
+    strategy:
+      fail-fast: false
+      matrix:
+        build_type: [Debug, Release]
+
+    runs-on: windows-latest
+
+    env:
+      TAOPQ_TEST_DATABASE: host=localhost dbname=postgres user=postgres password=postgres
+
+    steps:
+    - uses: actions/checkout@v4
+    - uses: ikalnytskyi/action-setup-postgres@v6
+
+    - run: cmake -E make_directory build
+
+    - shell: bash
+      working-directory: build/
+      run: cmake $GITHUB_WORKSPACE -G "Visual Studio 17 2022" -T ClangCL -DPostgreSQL_ADDITIONAL_VERSIONS=14
+
+    - working-directory: build/
+      run: cmake --build . --config ${{ matrix.build_type }}
+
+    - working-directory: build/
+      run: ctest -C ${{ matrix.build_type }} --output-on-failure
+
+  vs2019:
+    strategy:
+      fail-fast: false
+      matrix:
+        build_type: [Debug, Release]
+
+    runs-on: windows-2019
+
+    env:
+      TAOPQ_TEST_DATABASE: host=localhost dbname=postgres user=postgres password=postgres
+
+    steps:
+    - uses: actions/checkout@v4
+    - uses: ikalnytskyi/action-setup-postgres@v6
+
+    - run: cmake -E make_directory build
+
+    - shell: bash
+      working-directory: build/
+      run: cmake $GITHUB_WORKSPACE -G "Visual Studio 16 2019" -DPostgreSQL_ADDITIONAL_VERSIONS=14
+
+    - working-directory: build/
+      run: cmake --build . --config ${{ matrix.build_type }}
+
+    - working-directory: build/
+      run: ctest -C ${{ matrix.build_type }} --output-on-failure
+
+  vs2019-clang:
+    strategy:
+      fail-fast: false
+      matrix:
+        build_type: [Debug, Release]
+
+    runs-on: windows-2019
+
+    env:
+      TAOPQ_TEST_DATABASE: host=localhost dbname=postgres user=postgres password=postgres
+
+    steps:
+    - uses: actions/checkout@v4
+    - uses: ikalnytskyi/action-setup-postgres@v6
+
+    - run: cmake -E make_directory build
+
+    - shell: bash
+      working-directory: build/
+      run: cmake $GITHUB_WORKSPACE -G "Visual Studio 16 2019" -T ClangCL -DPostgreSQL_ADDITIONAL_VERSIONS=14
+
+    - working-directory: build/
+      run: cmake --build . --config ${{ matrix.build_type }}
+
+    - working-directory: build/
+      run: ctest -C ${{ matrix.build_type }} --output-on-failure
