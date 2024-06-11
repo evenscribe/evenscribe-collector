@@ -8,10 +8,28 @@
 #include <stdlib.h>
 #include <string>
 
+enum DatabaseKind { POSTGRES, CLICKHOUSE };
+
 struct Config {
-  std::string clickhouse_host;
-  int clickhouse_port;
+  std::string host;
+  int port;
+  DatabaseKind database_kind;
 };
+
+static inline DatabaseKind get_database_kind(std::string database_kind_string) {
+  static const std::unordered_map<std::string, DatabaseKind> database_kind_map =
+      {
+          {"postgres", POSTGRES},
+          {"clickhouse", CLICKHOUSE},
+      };
+
+  auto item = database_kind_map.find(database_kind_string);
+  if (item != database_kind_map.end()) {
+    return item->second;
+  } else {
+    throw std::invalid_argument("Invalid string for DatabaseKind enum");
+  }
+}
 
 static inline Config deserializeJsonToConfig(const std::string &jsonString) {
   Config config;
@@ -23,25 +41,34 @@ static inline Config deserializeJsonToConfig(const std::string &jsonString) {
   }
 
   // Extract clickhouse_host from JSON object
-  cJSON *clickhouse_host =
+  cJSON *host =
       cJSON_GetObjectItemCaseSensitive(json, "clickhouse_host");
-  if (!cJSON_IsString(clickhouse_host) ||
-      clickhouse_host->valuestring == nullptr) {
+  if (!cJSON_IsString(host) ||
+      host->valuestring == nullptr) {
     cJSON_Delete(json);
     throw std::runtime_error(
         "Error: clickhouse_host is missing or not a string");
   }
-  config.clickhouse_host = clickhouse_host->valuestring;
+  config.host = host->valuestring;
 
   // Extract clickhouse_port from JSON object
-  cJSON *clickhouse_port =
+  cJSON *port =
       cJSON_GetObjectItemCaseSensitive(json, "clickhouse_port");
-  if (!cJSON_IsNumber(clickhouse_port)) {
+  if (!cJSON_IsNumber(port)) {
     cJSON_Delete(json);
     throw std::runtime_error(
         "Error: clickhouse_port is missing or not a number");
   }
-  config.clickhouse_port = clickhouse_port->valuedouble;
+  config.port = port->valuedouble;
+
+  cJSON *database_kind =
+      cJSON_GetObjectItemCaseSensitive(json, "database_kind");
+  if (!cJSON_IsString(database_kind) || database_kind->valuestring == nullptr) {
+    cJSON_Delete(json);
+    throw std::runtime_error(
+        "Error: clickhouse_port is missing or not a number");
+  }
+  config.database_kind = get_database_kind(database_kind->valuestring);
 
   cJSON_Delete(json);
 

@@ -1,9 +1,9 @@
 #include "helper.h"
 #include "query_generator.h"
 
-class ClickhouseQueryGenerator : public QueryGenerator {
+class PostgresQueryGenerator : public QueryGenerator {
 public:
-  ClickhouseQueryGenerator() {}
+  PostgresQueryGenerator() {}
 
   std::string create_query(Log &log) const override {
     std::stringstream str;
@@ -16,21 +16,21 @@ public:
   static inline std::string
   unorderedMapToString(const std::unordered_map<K, V> &map) {
     std::ostringstream oss;
-    oss << "{";
+    oss << "'{";
     for (auto it = map.cbegin(); it != map.cend(); ++it) {
       if (it != map.cbegin()) {
         oss << ", ";
       }
-      oss << wrap(it->first, "'") << ":" << wrap(it->second, "'");
+      oss << wrap(it->first, "\"") << ":" << wrap(it->second, "\"");
     }
-    oss << "}";
+    oss << "}'";
     return oss.str();
   }
 
   std::string getValues(const Log &entry) const {
     // clang-format off
     return commaSeparate({
-          between("toDateTime64(",entry.Timestamp,  ",9)"),
+          between("to_timestamp(",entry.Timestamp,  ")"),
           wrap(entry.TraceId, "'"),
           wrap(entry.SpanId, "'"),
           std::to_string(entry.TraceFlags),

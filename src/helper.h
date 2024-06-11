@@ -2,7 +2,6 @@
 #define HELPER
 
 #include "param.h"
-#include "serializer.h"
 #include <cstdlib>
 #include <cstring>
 #include <sstream>
@@ -75,22 +74,6 @@ unorderedMapToString(const std::unordered_map<K, V> &map) {
   }
   oss << "}";
   return oss.str();
-}
-
-static inline std::string getValues(const Log &entry) {
-  // clang-format off
-  return commaSeparate({
-          between("toDateTime64(",entry.Timestamp,  ",9)"),
-          wrap(entry.TraceId, "'"),
-          wrap(entry.SpanId, "'"),
-          std::to_string(entry.TraceFlags),
-          wrap(entry.SeverityText, "'"),
-          std::to_string(entry.SeverityNumber),
-          wrap(entry.ServiceName, "'"),
-          wrap(entry.Body, "'"),
-          unorderedMapToString(entry.ResourceAttributes),
-          unorderedMapToString(entry.LogAttributes),
-          });
 }
 
 #endif // !HELPER

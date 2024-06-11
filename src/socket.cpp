@@ -3,6 +3,8 @@
 #include "clickhouse_query_generator.cpp"
 #include "log.h"
 #include "param.h"
+#include "postgres_persistence.cpp"
+#include "postgres_query_generator.cpp"
 #include "serializer.h"
 #include <clickhouse/client.h>
 #include <cstdlib>
@@ -13,14 +15,21 @@
 #include <unistd.h>
 
 //
-ClickhouseQueryGenerator query_generator; // should implement create_query
-                                          // function from "query_generator.h"
-
-clickhouse::Client *db = (clickhouse::Client *)malloc(
+ClickhouseQueryGenerator
+    clickhouse_query_generator; // should implement create_query
+                                // function from "query_generator.h"
+clickhouse::Client *clickhouse_db = (clickhouse::Client *)malloc(
     sizeof(clickhouse::Client) * THREADS); // clickhouse instance array
-ClickhousePersistence *db_connections = (ClickhousePersistence *)malloc(
-    sizeof(ClickhousePersistence) *
-    THREADS); // should implement save function from "persistence.h"
+ClickhousePersistence *clickhouse_db_connections =
+    (ClickhousePersistence *)malloc(
+        sizeof(ClickhousePersistence) *
+        THREADS); // should implement save function from "persistence.h"
+//
+
+//
+PostgresQueryGenerator postgres_query_generator;
+PostgresPersistence *postgres_db_connections =
+    (PostgresPersistence *)malloc(sizeof(PostgresPersistence) * THREADS);
 //
 
 typedef struct {
@@ -36,7 +45,7 @@ pthread_mutex_t queue_mtx = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t cond_var = PTHREAD_COND_INITIALIZER;
 bool done = false;
 
-void process(void *arg) {
+void process_clickhouse(void *arg) {
   connection_t *conn = (connection_t *)arg;
 
   if (!conn) {
@@ -47,10 +56,10 @@ void process(void *arg) {
 
   if (read(conn->client_socket, buf, BUFFER_SIZE) > 0) {
     Log entry = Serializer::serialize(buf);
-    std::string query = query_generator.create_query(entry);
+    std::string query = clickhouse_query_generator.create_query(entry);
     const char *response;
     try {
-      db_connections[conn->thread_id].save(query);
+      clickhouse_db_connections[conn->thread_id].save(query);
       response = "OK";
     } catch (const std::exception &e) {
       warn(e.what());
@@ -69,7 +78,7 @@ void process(void *arg) {
   delete conn;
 }
 
-void *worker(void *arg) {
+void *worker_clickhouse(void *arg) {
   while (true) {
     int index = *((int *)arg);
     pthread_mutex_lock(&queue_mtx);
@@ -87,7 +96,65 @@ void *worker(void *arg) {
     conn->thread_id = index;
     task_queue.pop();
     pthread_mutex_unlock(&queue_mtx);
-    process(conn);
+    process_clickhouse(conn);
+  }
+
+  free(arg);
+  pthread_exit(nullptr);
+}
+
+void process_postgres(void *arg) {
+  connection_t *conn = (connection_t *)arg;
+
+  if (!conn) {
+    return;
+  }
+
+  char buf[BUFFER_SIZE];
+
+  if (read(conn->client_socket, buf, BUFFER_SIZE) > 0) {
+    Log entry = Serializer::serialize(buf);
+    std::string query = postgres_query_generator.create_query(entry);
+    const char *response;
+    try {
+      postgres_db_connections[conn->thread_id].save(query);
+      response = "OK";
+    } catch (const std::exception &e) {
+      warn(e.what());
+      response = "NO";
+    }
+    if (write(conn->client_socket, response, sizeof(int)) == -1) {
+      warn("Write error.");
+    }
+
+    std::cout << "Save success.\n";
+  } else {
+    warn("Socket buffer read error.");
+  }
+
+  close(conn->client_socket);
+  delete conn;
+}
+
+void *worker_postgres(void *arg) {
+  while (true) {
+    int index = *((int *)arg);
+    pthread_mutex_lock(&queue_mtx);
+
+    while (task_queue.empty() && !done) {
+      pthread_cond_wait(&cond_var, &queue_mtx);
+    }
+
+    if (done && task_queue.empty()) {
+      pthread_mutex_unlock(&queue_mtx);
+      break;
+    }
+
+    connection_t *conn = task_queue.front();
+    conn->thread_id = index;
+    task_queue.pop();
+    pthread_mutex_unlock(&queue_mtx);
+    process_postgres(conn);
   }
 
   free(arg);
@@ -117,30 +184,6 @@ void Socket::_listen() {
 }
 
 Socket::Socket(Config config) {
-  // Changeable block: This block will change for every database implementation
-  for (int i = 0; i < THREADS; ++i) {
-    try {
-      new (&db[i]) clickhouse::Client(clickhouse::ClientOptions()
-                                          .SetHost(config.clickhouse_host)
-                                          .SetPort(config.clickhouse_port));
-    } catch (...) {
-      error("Connection to database failed. Please, check you config file and "
-            "ensure that the database is running.");
-      exit(1);
-    }
-  }
-
-  for (int i = 0; i < THREADS; ++i) {
-    try {
-      new (&db_connections[i]) ClickhousePersistence(&db[i]);
-    } catch (...) {
-      error("Connection to database failed. Please, check you config file and "
-            "ensure that the database is running.");
-      exit(1);
-    }
-  }
-  //
-
   server_socket = socket(AF_UNIX, SOCK_STREAM, 0);
   if (server_socket == -1) {
     error("Error: create socket failed");
@@ -151,14 +194,72 @@ Socket::Socket(Config config) {
   _bind();
   _listen();
 
-  int i;
-  for (i = 0; i < THREADS; ++i) {
-    int *a = (int *)malloc(sizeof(int));
-    *a = i;
-    if (pthread_create(&thread_pool[i], nullptr, *worker, a) != 0) {
-      error("Error: create thread failed");
-      exit(1);
+  switch (config.database_kind) {
+  case POSTGRES: {
+    free(clickhouse_db);
+    free(clickhouse_db_connections);
+
+    for (int i = 0; i < THREADS; ++i) {
+      try {
+        const auto conn = tao::pq::connection::create("dbname=evenscribe_db");
+        new (&postgres_db_connections[i]) PostgresPersistence(conn);
+      } catch (...) {
+        error(
+            "Connection to database failed. Please, check you config file and "
+            "ensure that the database is running.");
+        exit(1);
+      }
     }
+    int i;
+    for (i = 0; i < THREADS; ++i) {
+      int *a = (int *)malloc(sizeof(int));
+      *a = i;
+      if (pthread_create(&thread_pool[i], nullptr, *worker_postgres, a) != 0) {
+        error("Error: create thread failed");
+        exit(1);
+      }
+    }
+  }
+  case CLICKHOUSE: {
+    free(postgres_db_connections);
+
+    for (int i = 0; i < THREADS; ++i) {
+      try {
+        new (&clickhouse_db[i])
+            clickhouse::Client(clickhouse::ClientOptions()
+                                   .SetHost(config.host)
+                                   .SetPort(config.port));
+      } catch (...) {
+        error(
+            "Connection to database failed. Please, check you config file and "
+            "ensure that the database is running.");
+        exit(1);
+      }
+    }
+
+    for (int i = 0; i < THREADS; ++i) {
+      try {
+        new (&clickhouse_db_connections[i])
+            ClickhousePersistence(&clickhouse_db[i]);
+      } catch (...) {
+        error(
+            "Connection to database failed. Please, check you config file and "
+            "ensure that the database is running.");
+        exit(1);
+      }
+    }
+
+    int i;
+    for (i = 0; i < THREADS; ++i) {
+      int *a = (int *)malloc(sizeof(int));
+      *a = i;
+      if (pthread_create(&thread_pool[i], nullptr, *worker_clickhouse, a) !=
+          0) {
+        error("Error: create thread failed");
+        exit(1);
+      }
+    }
+  }
   }
 }
 
@@ -174,8 +275,9 @@ Socket::~Socket() {
     pthread_join(thread_pool[i], nullptr);
   }
 
-  free(db);
-  free(db_connections);
+  free(clickhouse_db);
+  free(clickhouse_db_connections);
+  free(postgres_db_connections);
   close(server_socket);
   remove(SOCKET_PATH);
 }
