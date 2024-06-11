@@ -2,9 +2,14 @@
 #define HELPER
 
 #include "param.h"
+#include "serializer.h"
 #include <cstdlib>
 #include <cstring>
+#include <sstream>
+#include <string>
 #include <sys/stat.h>
+#include <unordered_map>
+#include <vector>
 
 static inline bool file_exists(char *filename) {
   struct stat buffer;
@@ -27,6 +32,65 @@ static inline bool directory_exists(char *filename) {
 
 static inline bool string_equals(const char *a, const char *b) {
   return a && b && strcmp(a, b) == 0;
+}
+
+static inline std::string wrap(const std::string &str,
+                               const std::string &wrap) {
+  return wrap + str + wrap;
+}
+
+static inline std::string between(const std::string &start,
+                                  const std::string &str,
+                                  const std::string &end) {
+  return start + str + end;
+}
+
+static inline std::string between(const std::string &start,
+                                  const uint64_t &number,
+                                  const std::string &end) {
+  return start + std::to_string(number) + end;
+}
+
+static inline std::string commaSeparate(const std::vector<std::string> &arr) {
+  std::ostringstream oss;
+  if (!arr.empty()) {
+    oss << arr[0];
+    for (size_t i = 1; i < arr.size(); ++i) {
+      oss << "," << arr[i];
+    }
+  }
+  return oss.str();
+}
+
+template <typename K, typename V>
+static inline std::string
+unorderedMapToString(const std::unordered_map<K, V> &map) {
+  std::ostringstream oss;
+  oss << "{";
+  for (auto it = map.cbegin(); it != map.cend(); ++it) {
+    if (it != map.cbegin()) {
+      oss << ", ";
+    }
+    oss << wrap(it->first, "'") << ":" << wrap(it->second, "'");
+  }
+  oss << "}";
+  return oss.str();
+}
+
+static inline std::string getValues(const Log &entry) {
+  // clang-format off
+  return commaSeparate({
+          between("toDateTime64(",entry.Timestamp,  ",9)"),
+          wrap(entry.TraceId, "'"),
+          wrap(entry.SpanId, "'"),
+          std::to_string(entry.TraceFlags),
+          wrap(entry.SeverityText, "'"),
+          std::to_string(entry.SeverityNumber),
+          wrap(entry.ServiceName, "'"),
+          wrap(entry.Body, "'"),
+          unorderedMapToString(entry.ResourceAttributes),
+          unorderedMapToString(entry.LogAttributes),
+          });
 }
 
 #endif // !HELPER

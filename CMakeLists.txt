@@ -6,7 +6,6 @@ set(CMAKE_CXX_STANDARD 17)
 set(SOURCES
     src/main.cpp
     src/socket.cpp
-    src/query_generator.cpp
     src/serializer.cpp
 )
 

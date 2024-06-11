@@ -1,14 +1,27 @@
 #include "socket.h"
+#include "clickhouse_persistence.cpp"
+#include "clickhouse_query_generator.cpp"
 #include "log.h"
 #include "param.h"
-#include "query_generator.h"
 #include "serializer.h"
 #include <clickhouse/client.h>
+#include <cstdlib>
 #include <iostream>
 #include <mutex>
 #include <queue>
 #include <sys/socket.h>
 #include <unistd.h>
+
+//
+ClickhouseQueryGenerator query_generator; // should implement create_query
+                                          // function from "query_generator.h"
+
+clickhouse::Client *db = (clickhouse::Client *)malloc(
+    sizeof(clickhouse::Client) * THREADS); // clickhouse instance array
+ClickhousePersistence *db_connections = (ClickhousePersistence *)malloc(
+    sizeof(ClickhousePersistence) *
+    THREADS); // should implement save function from "persistence.h"
+//
 
 typedef struct {
   int client_socket;
@@ -18,8 +31,7 @@ typedef struct {
 std::mutex mtx;
 pthread_t thread_pool[THREADS];
 std::queue<connection_t *> task_queue;
-clickhouse::Client *db_connections =
-    (clickhouse::Client *)malloc(sizeof(clickhouse::Client) * 8);
+
 pthread_mutex_t queue_mtx = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t cond_var = PTHREAD_COND_INITIALIZER;
 bool done = false;
@@ -35,16 +47,16 @@ void process(void *arg) {
 
   if (read(conn->client_socket, buf, BUFFER_SIZE) > 0) {
     Log entry = Serializer::serialize(buf);
-    std::string query = QueryGenerator::query(TABLE_NAME, entry);
+    std::string query = query_generator.create_query(entry);
     const char *response;
     try {
-      db_connections[conn->thread_id].Execute(query);
+      db_connections[conn->thread_id].save(query);
       response = "OK";
     } catch (const std::exception &e) {
       warn(e.what());
       response = "NO";
     }
-    if (write(conn->client_socket, response, sizeof(char) * 2) == -1) {
+    if (write(conn->client_socket, response, sizeof(int)) == -1) {
       warn("Write error.");
     }
 
@@ -105,6 +117,30 @@ void Socket::_listen() {
 }
 
 Socket::Socket(Config config) {
+  // Changeable block: This block will change for every database implementation
+  for (int i = 0; i < THREADS; ++i) {
+    try {
+      new (&db[i]) clickhouse::Client(clickhouse::ClientOptions()
+                                          .SetHost(config.clickhouse_host)
+                                          .SetPort(config.clickhouse_port));
+    } catch (...) {
+      error("Connection to database failed. Please, check you config file and "
+            "ensure that the database is running.");
+      exit(1);
+    }
+  }
+
+  for (int i = 0; i < THREADS; ++i) {
+    try {
+      new (&db_connections[i]) ClickhousePersistence(&db[i]);
+    } catch (...) {
+      error("Connection to database failed. Please, check you config file and "
+            "ensure that the database is running.");
+      exit(1);
+    }
+  }
+  //
+
   server_socket = socket(AF_UNIX, SOCK_STREAM, 0);
   if (server_socket == -1) {
     error("Error: create socket failed");
@@ -114,19 +150,6 @@ Socket::Socket(Config config) {
   _sanitize();
   _bind();
   _listen();
-
-  for (int i = 0; i < THREADS; ++i) {
-    try {
-      new (&db_connections[i])
-          clickhouse::Client(clickhouse::ClientOptions()
-                                 .SetHost(config.clickhouse_host)
-                                 .SetPort(config.clickhouse_port));
-    } catch (...) {
-      error("Connection to database failed. Please, check you config file and "
-            "ensure that the database is running.");
-      exit(1);
-    }
-  }
 
   int i;
   for (i = 0; i < THREADS; ++i) {
@@ -151,6 +174,7 @@ Socket::~Socket() {
     pthread_join(thread_pool[i], nullptr);
   }
 
+  free(db);
   free(db_connections);
   close(server_socket);
   remove(SOCKET_PATH);
