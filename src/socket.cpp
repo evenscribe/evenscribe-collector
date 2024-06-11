@@ -184,6 +184,7 @@ void Socket::_listen() {
 }
 
 Socket::Socket(Config config) {
+  this->config = config;
   server_socket = socket(AF_UNIX, SOCK_STREAM, 0);
   if (server_socket == -1) {
     error("Error: create socket failed");
@@ -276,9 +277,18 @@ Socket::~Socket() {
     pthread_join(thread_pool[i], nullptr);
   }
 
-  free(clickhouse_db);
-  free(clickhouse_db_connections);
-  free(postgres_db_connections);
+  switch (this->config.database_kind) {
+  case POSTGRES: {
+    free(postgres_db_connections);
+    break;
+  }
+  case CLICKHOUSE: {
+    free(clickhouse_db);
+    free(clickhouse_db_connections);
+    break;
+  }
+  }
+
   close(server_socket);
   remove(SOCKET_PATH);
 }

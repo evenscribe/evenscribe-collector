@@ -8,6 +8,7 @@ class Socket {
 private:
   int server_socket;
   struct sockaddr_un addr;
+  Config config;
 
   void _sanitize();
   void _bind();
