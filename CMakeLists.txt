@@ -3,14 +3,13 @@ project(OlympusObservatory)
 
 set(CMAKE_CXX_STANDARD 17)
 
-set(SOURCES
-    src/main.cpp
-    src/socket.cpp
-    src/serializer.cpp
-    src/cJSON.c
-)
+# Include all source files in the src/ directory and its subdirectories
+file(GLOB_RECURSE SOURCE_FILES "src/*.cpp")
 
-add_executable(${PROJECT_NAME} ${SOURCES})
+# Include all header files in the src/ directory and its subdirectories
+file(GLOB_RECURSE HEADER_FILES "src/*.h")
+
+add_executable(${PROJECT_NAME} ${SOURCE_FILES} ${HEADER_FILES})
 
 add_subdirectory(include/clickhouse-cpp-2.5.1)
 target_link_libraries(${PROJECT_NAME} PRIVATE clickhouse-cpp-lib)
