@@ -24,11 +24,10 @@ static inline DatabaseKind get_database_kind(std::string database_kind_string) {
       };
 
   auto item = database_kind_map.find(database_kind_string);
-  if (item != database_kind_map.end()) {
-    return item->second;
-  } else {
-    throw std::invalid_argument("Invalid string for DatabaseKind enum");
+  if (item == database_kind_map.end()) {
+    error("evenscribe(config): invalid string for databse_kind");
   }
+  return item->second;
 }
 
 static inline Config deserializeJsonToConfig(const std::string &jsonString) {
@@ -37,27 +36,22 @@ static inline Config deserializeJsonToConfig(const std::string &jsonString) {
   // Parse the JSON string
   cJSON *json = cJSON_Parse(jsonString.c_str());
   if (json == nullptr) {
-    throw std::runtime_error("Error parsing Config JSON");
+    error("evenscribe(config): error parsing config file\n");
   }
 
   // Extract clickhouse_host from JSON object
-  cJSON *host =
-      cJSON_GetObjectItemCaseSensitive(json, "host");
-  if (!cJSON_IsString(host) ||
-      host->valuestring == nullptr) {
+  cJSON *host = cJSON_GetObjectItemCaseSensitive(json, "host");
+  if (!cJSON_IsString(host) || host->valuestring == nullptr) {
     cJSON_Delete(json);
-    throw std::runtime_error(
-        "Error: clickhouse_host is missing or not a string");
+    error("evenscribe(config): host is missing or not a string\n");
   }
   config.host = host->valuestring;
 
   // Extract clickhouse_port from JSON object
-  cJSON *port =
-      cJSON_GetObjectItemCaseSensitive(json, "port");
+  cJSON *port = cJSON_GetObjectItemCaseSensitive(json, "port");
   if (!cJSON_IsNumber(port)) {
     cJSON_Delete(json);
-    throw std::runtime_error(
-        "Error: clickhouse_port is missing or not a number");
+    error("evenscribe(config): port is missing or not a number\n");
   }
   config.port = port->valuedouble;
 
@@ -65,8 +59,7 @@ static inline Config deserializeJsonToConfig(const std::string &jsonString) {
       cJSON_GetObjectItemCaseSensitive(json, "database_kind");
   if (!cJSON_IsString(database_kind) || database_kind->valuestring == nullptr) {
     cJSON_Delete(json);
-    throw std::runtime_error(
-        "Error: clickhouse_port is missing or not a number");
+    error("evenscribe(config): database_kind is missing or not a string\n");
   }
   config.database_kind = get_database_kind(database_kind->valuestring);
 
@@ -78,7 +71,7 @@ static inline Config deserializeJsonToConfig(const std::string &jsonString) {
 static inline char *get_config_file() {
   char *home = getenv("HOME");
   if (!home) {
-    error("evenscribe: unable to retrieve home directory! abort..\n");
+    error("Unable to retrieve home directory.\n");
   }
   const char *config_path = CONFIG_PATH;
 
@@ -103,7 +96,7 @@ static inline bool config_file_exstis() {
 static char *read_file(const char *filePath) {
   FILE *file = fopen(filePath, "rb"); // Open the file in binary mode
   if (file == NULL) {
-    error("Could not open file");
+    error("Could not open file\n");
     return NULL;
   }
 
@@ -115,7 +108,7 @@ static char *read_file(const char *filePath) {
   // Allocate memory to hold the file contents
   char *buffer = (char *)malloc(fileSize + 1);
   if (buffer == NULL) {
-    error("Memory allocation failed");
+    error("Memory allocation failed\n");
     fclose(file);
     return NULL;
   }
@@ -123,7 +116,7 @@ static char *read_file(const char *filePath) {
   // Read the file into the buffer
   size_t bytesRead = fread(buffer, 1, fileSize, file);
   if (bytesRead != fileSize) {
-    error("File read error");
+    error("File read error\n");
     free(buffer);
     fclose(file);
     return NULL;
@@ -138,18 +131,13 @@ static char *read_file(const char *filePath) {
 
 static Config config_to_tuple() {
   if (!config_file_exstis()) {
-    error("Config file doesn't exist : $HOME/.evenscriberc");
-    exit(1);
+    error("evenscribe(config): config file doesn't exist : $HOME/.evenscriberc\n");
   }
 
   char *path = get_config_file();
   char *contents = read_file(path);
-  try {
-    return deserializeJsonToConfig(contents);
-  } catch (...) {
-    error("Error reading config file. Bad schema detected.");
-    exit(1);
-  }
+
+  return deserializeJsonToConfig(contents);
 }
 
 #endif // ! CONFIG
