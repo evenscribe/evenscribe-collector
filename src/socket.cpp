@@ -65,7 +65,7 @@ void process_clickhouse(void *arg) {
       warn(e.what());
       response = "NO";
     }
-    if (write(conn->client_socket, response, sizeof(int)) == -1) {
+    if (write(conn->client_socket, response, sizeof(char) * 2) == -1) {
       warn("Write error.");
     }
 
@@ -123,7 +123,7 @@ void process_postgres(void *arg) {
       warn(e.what());
       response = "NO";
     }
-    if (write(conn->client_socket, response, sizeof(int)) == -1) {
+    if (write(conn->client_socket, response, sizeof(char) * 2) == -1) {
       warn("Write error.");
     }
 
