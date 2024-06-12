@@ -61,19 +61,4 @@ static inline std::string commaSeparate(const std::vector<std::string> &arr) {
   return oss.str();
 }
 
-template <typename K, typename V>
-static inline std::string
-unorderedMapToString(const std::unordered_map<K, V> &map) {
-  std::ostringstream oss;
-  oss << "{";
-  for (auto it = map.cbegin(); it != map.cend(); ++it) {
-    if (it != map.cbegin()) {
-      oss << ", ";
-    }
-    oss << wrap(it->first, "'") << ":" << wrap(it->second, "'");
-  }
-  oss << "}";
-  return oss.str();
-}
-
 #endif // !HELPER
