@@ -7,7 +7,6 @@
 #include <sstream>
 #include <string>
 #include <sys/stat.h>
-#include <unordered_map>
 #include <vector>
 
 static inline bool file_exists(char *filename) {

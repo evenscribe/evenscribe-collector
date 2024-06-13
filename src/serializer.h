@@ -15,6 +15,8 @@ struct Log {
   std::string Body;
   std::unordered_map<std::string, std::string> ResourceAttributes;
   std::unordered_map<std::string, std::string> LogAttributes;
+  bool is_vaild; // phantom_data to check if the struct has been
+                       // initialized and valid
 };
 
 class Serializer {

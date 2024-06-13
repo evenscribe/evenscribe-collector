@@ -23,6 +23,13 @@ static inline void warn(const char *format, ...) {
   va_end(args);
 }
 
+static inline void info(const char *format, ...) {
+  va_list args;
+  va_start(args, format);
+  vfprintf(stdout, format, args);
+  va_end(args);
+}
+
 static inline void error(const char *format, ...) {
   va_list args;
   va_start(args, format);
