@@ -186,15 +186,13 @@ void Socket::_listen() {
 void initialize_postgres() {
   free(clickhouse_db);
   free(clickhouse_db_connections);
+
+  // FIXME: try catch doesn't work here
+  // I tried a bunch of stuff but nothing did
+  // Just letting the app crash and print the error
   for (int i = 0; i < THREADS; ++i) {
-    try {
-      const auto conn = tao::pq::connection::create("dbname=evenscribe_db");
-      new (&postgres_db_connections[i]) PostgresPersistence(conn);
-    } catch (...) {
-      error("evenscribe: Connection to database failed. Please, check your"
-            "config file and "
-            "ensure that the database is running\n");
-    }
+    const auto conn = tao::pq::connection::create("dbname=evenscribe_db");
+    new (&postgres_db_connections[i]) PostgresPersistence(conn);
   }
   int i;
   for (i = 0; i < THREADS; ++i) {
@@ -209,25 +207,13 @@ void initialize_postgres() {
 void initialize_clickhouse(Config config) {
   free(postgres_db_connections);
   for (int i = 0; i < THREADS; ++i) {
-    try {
-      new (&clickhouse_db[0]) clickhouse::Client(clickhouse::ClientOptions()
-                                                     .SetHost(config.host)
-                                                     .SetPort(config.port));
-    } catch (...) {
-      error("evenscribe: Connection to database failed. Please, check your"
-            "config file and "
-            "ensure that the database is running\n");
-    }
-  }
-  for (int i = 0; i < THREADS; ++i) {
-    try {
-      new (&clickhouse_db_connections[i])
-          ClickhousePersistence(&clickhouse_db[i]);
-    } catch (...) {
-      error("evenscribe: Connection to database failed. Please, check you "
-            "config file and "
-            "ensure that the database is running.\n");
-    }
+    // FIXME: this shit right here throws error
+    // but cannot be caught for some reason
+    // doesn't even print a debug message
+    new (&clickhouse_db[i]) clickhouse::Client(
+        clickhouse::ClientOptions().SetHost(config.host).SetPort(config.port));
+    new (&clickhouse_db_connections[i])
+        ClickhousePersistence(&clickhouse_db[i]);
   }
   int i;
   for (i = 0; i < THREADS; ++i) {
@@ -243,7 +229,7 @@ Socket::Socket(Config config) {
   this->config = config;
   server_socket = socket(AF_UNIX, SOCK_STREAM, 0);
   if (server_socket == -1) {
-    error("Error: create socket failed");
+    error("create socket failed");
   }
 
   _sanitize();
@@ -297,7 +283,7 @@ void Socket::handle_message() {
     int client_socket = accept(server_socket, NULL, NULL);
 
     if (client_socket == -1) {
-      error("accept connection failed");
+      warn("accept connection failed");
       continue;
     }
 
