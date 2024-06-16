@@ -1,12 +1,13 @@
 cmake_minimum_required(VERSION 3.5)
 project(OlympusObservatory)
 
+include(FetchContent)
 set(CMAKE_CXX_STANDARD 17)
+
+add_compile_options(-O3 -march=native -mtune=native)
 
 set(SOURCES
     src/cJSON.c
-    src/clickhouse_persistence.cpp
-    src/clickhouse_query_generator.cpp
     src/main.cpp
     src/serializer.cpp
     src/socket.cpp
@@ -32,4 +33,5 @@ target_link_libraries(${PROJECT_NAME} PRIVATE clickhouse-cpp-lib)
 add_subdirectory(include/taopq-1.0.0)
 target_link_libraries(${PROJECT_NAME} PRIVATE taopq)
 
-
+add_subdirectory(include/vlogs-1.0.0)
+target_link_libraries(${PROJECT_NAME} PRIVATE victorialogslib)

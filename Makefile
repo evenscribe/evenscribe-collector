@@ -16,3 +16,7 @@ run:
 fix_lsp:
 	cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=1 -B build -S .
 
+
+spawn_db:
+	docker run --rm -d --name victorialogs -p 9428:9428 -v /tmp/victoria-logs-data:/victoria-logs-data \
+	docker.io/victoriametrics/victoria-logs:v0.19.0-victorialogs

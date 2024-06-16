@@ -13,6 +13,7 @@
 #include <string>
 #include <sys/socket.h>
 #include <unistd.h>
+#include <victorialogslib/client.h>
 
 //
 ClickhouseQueryGenerator clickhouse_query_generator;
@@ -25,6 +26,11 @@ PostgresQueryGenerator postgres_query_generator;
 std::shared_ptr<tao::pq::connection> *postgres_db =
     (std::shared_ptr<tao::pq::connection> *)malloc(
         sizeof(std::shared_ptr<tao::pq::connection>) * THREADS);
+//
+
+using VictoriaClient = Client;
+VictoriaClient *victoria_db =
+    (VictoriaClient *)malloc(sizeof(VictoriaClient) * THREADS);
 //
 
 typedef struct {
@@ -133,6 +139,36 @@ void process_postgres(void *arg) {
   delete conn;
 }
 
+void process_victoria(void *arg) {
+  connection_t *conn = (connection_t *)arg;
+
+  if (!conn) {
+    return;
+  }
+
+  char buf[BUFFER_SIZE];
+
+  if (read(conn->client_socket, buf, BUFFER_SIZE) > 0) {
+    const char *response;
+    try {
+      victoria_db[conn->thread_id].insert(buf);
+      response = "OK";
+    } catch (...) {
+      warn("error is happeing hererersatoehu ");
+      response = "NO";
+    }
+    if (write(conn->client_socket, response, sizeof(char) * 2) == -1) {
+      warn("Write error.");
+    }
+    info("Save success.\n");
+  } else {
+    warn("Socket buffer read error.");
+  }
+
+  close(conn->client_socket);
+  delete conn;
+}
+
 void *worker_postgres(void *arg) {
   while (true) {
     int index = *((int *)arg);
@@ -152,6 +188,31 @@ void *worker_postgres(void *arg) {
     task_queue.pop();
     pthread_mutex_unlock(&queue_mtx);
     process_postgres(conn);
+  }
+
+  free(arg);
+  pthread_exit(nullptr);
+}
+
+void *worker_victoria(void *arg) {
+  while (true) {
+    int index = *((int *)arg);
+    pthread_mutex_lock(&queue_mtx);
+
+    while (task_queue.empty() && !done) {
+      pthread_cond_wait(&cond_var, &queue_mtx);
+    }
+
+    if (done && task_queue.empty()) {
+      pthread_mutex_unlock(&queue_mtx);
+      break;
+    }
+
+    connection_t *conn = task_queue.front();
+    conn->thread_id = index;
+    task_queue.pop();
+    pthread_mutex_unlock(&queue_mtx);
+    process_victoria(conn);
   }
 
   free(arg);
@@ -213,6 +274,20 @@ void initialize_clickhouse(Config config) {
     int *a = (int *)malloc(sizeof(int));
     *a = i;
     if (pthread_create(&thread_pool[i], nullptr, *worker_clickhouse, a) != 0) {
+      error("create thread failed");
+    }
+  }
+}
+
+void initialize_victoria(Config config) {
+  for (int i = 0; i < THREADS; ++i) {
+    new (&victoria_db[i]) VictoriaClient("http://localhost:9428");
+  }
+  int i;
+  for (i = 0; i < THREADS; ++i) {
+    int *a = (int *)malloc(sizeof(int));
+    *a = i;
+    if (pthread_create(&thread_pool[i], nullptr, *worker_victoria, a) != 0) {
       error("create thread failed");
     }
   }

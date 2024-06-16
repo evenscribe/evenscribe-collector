@@ -2,6 +2,37 @@
 #include "cJSON.h"
 #include "log.h"
 
+enum DataKind { INTEGER, STRING };
+
+static inline cJSON *get_json_field_value(cJSON *json, std::string field,
+                                          DataKind data_kind, Log *log) {
+  cJSON *field_value = cJSON_GetObjectItemCaseSensitive(json, field.c_str());
+  switch (data_kind) {
+  case STRING: {
+    std::string error_msg =
+        "evenscribe(config): " + field + " is missing or not a string\n";
+    if (!cJSON_IsString(field_value) || field_value->valuestring == nullptr) {
+      cJSON_Delete(json);
+      warn(error_msg.c_str());
+      log->is_vaild = false;
+    }
+    break;
+  }
+  case INTEGER: {
+    std::string error_msg =
+        "evenscribe(config): " + field + " is missing or not a number\n";
+    if (!cJSON_IsNumber(field_value)) {
+      cJSON_Delete(json);
+      warn(error_msg.c_str());
+      log->is_vaild = false;
+    }
+    break;
+  }
+  }
+
+  return field_value;
+}
+
 Log parse(std::string jsonString) {
   Log log;
   cJSON *json = cJSON_Parse(jsonString.c_str());
@@ -15,70 +46,20 @@ Log parse(std::string jsonString) {
     return log;
   }
 
-  cJSON *timestamp = cJSON_GetObjectItemCaseSensitive(json, "Timestamp");
-  if (!cJSON_IsNumber(timestamp)) {
-    warn("evenscribe(log): Timestamp is either missing or not a number\n");
-    log.is_vaild = false;
-    return log;
-  }
-  log.Timestamp = timestamp->valuedouble;
-
-  cJSON *traceId = cJSON_GetObjectItemCaseSensitive(json, "TraceId");
-  if (!cJSON_IsString(traceId) || traceId->valuestring == nullptr) {
-    warn("evenscribe(log): TraceId is either missing or not a string\n");
-    log.is_vaild = false;
-    return log;
-  }
-  log.TraceId = traceId->valuestring;
-
-  cJSON *spanId = cJSON_GetObjectItemCaseSensitive(json, "SpanId");
-  if (!cJSON_IsString(spanId) || spanId->valuestring == nullptr) {
-    warn("evenscribe(log): SpanId is either missing or not a string\n");
-    log.is_vaild = false;
-    return log;
-  }
-  log.SpanId = spanId->valuestring;
-
-  cJSON *traceFlags = cJSON_GetObjectItemCaseSensitive(json, "TraceFlags");
-  if (!cJSON_IsNumber(traceFlags)) {
-    warn("evenscribe(log): TraceFlags is either missing or not a number\n");
-    log.is_vaild = false;
-    return log;
-  }
-  log.TraceFlags = traceFlags->valuedouble;
-
-  cJSON *severityText = cJSON_GetObjectItemCaseSensitive(json, "SeverityText");
-  if (!cJSON_IsString(severityText) || severityText->valuestring == nullptr) {
-    warn("evenscribe(log): SeverityText is either missing or not a string\n");
-    log.is_vaild = false;
-    return log;
-  }
-  log.SeverityText = severityText->valuestring;
-
-  cJSON *severityNumber =
-      cJSON_GetObjectItemCaseSensitive(json, "SeverityNumber");
-  if (!cJSON_IsNumber(severityNumber)) {
-    warn("evenscribe(log): SeverityNumber is either missing or not a number\n");
-    log.is_vaild = false;
-    return log;
-  }
-  log.SeverityNumber = severityNumber->valuedouble;
-
-  cJSON *serviceName = cJSON_GetObjectItemCaseSensitive(json, "ServiceName");
-  if (!cJSON_IsString(serviceName) || serviceName->valuestring == nullptr) {
-    warn("evenscribe(log): ServiceName is either missing or not a string\n");
-    log.is_vaild = false;
-    return log;
-  }
-  log.ServiceName = serviceName->valuestring;
-
-  cJSON *body = cJSON_GetObjectItemCaseSensitive(json, "Body");
-  if (!cJSON_IsString(body) || body->valuestring == nullptr) {
-    warn("evenscribe(log): Body is either missing or not a string\n");
-    log.is_vaild = false;
-    return log;
-  }
-  log.Body = body->valuestring;
+  log.Timestamp =
+      get_json_field_value(json, "Timestamp", INTEGER, &log)->valuedouble;
+  log.TraceId =
+      get_json_field_value(json, "TraceId", STRING, &log)->valuestring;
+  log.SpanId = get_json_field_value(json, "SpanId", STRING, &log)->valuestring;
+  log.TraceFlags =
+      get_json_field_value(json, "TraceFlags", INTEGER, &log)->valuedouble;
+  log.SeverityText =
+      get_json_field_value(json, "SeverityText", STRING, &log)->valuestring;
+  log.SeverityNumber =
+      get_json_field_value(json, "SeverityNumber", INTEGER, &log)->valuedouble;
+  log.ServiceName =
+      get_json_field_value(json, "ServiceName", STRING, &log)->valuestring;
+  log.Body = get_json_field_value(json, "Body", STRING, &log)->valuestring;
 
   cJSON *resourceAttributes =
       cJSON_GetObjectItemCaseSensitive(json, "ResourceAttributes");
