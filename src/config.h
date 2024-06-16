@@ -9,11 +9,15 @@
 #include <string>
 #include <unordered_map>
 
+enum DataKind { STRING, INTEGER };
 enum DatabaseKind { POSTGRES, CLICKHOUSE };
 
 struct Config {
-  std::string host;
   int port;
+  std::string host;
+  std::string user;
+  std::string password;
+  std::string dbname;
   DatabaseKind database_kind;
 };
 
@@ -31,38 +35,58 @@ static inline DatabaseKind get_database_kind(std::string database_kind_string) {
   return item->second;
 }
 
+static inline cJSON *get_json_field_value(cJSON *json, std::string field,
+                                          DataKind data_kind) {
+  cJSON *field_value = cJSON_GetObjectItemCaseSensitive(json, field.c_str());
+  switch (data_kind) {
+  case STRING: {
+    std::string error_msg =
+        "evenscribe(config): " + field + " is missing or not a string\n";
+    if (!cJSON_IsString(field_value) || field_value->valuestring == nullptr) {
+      cJSON_Delete(json);
+      error(error_msg.c_str());
+    }
+    break;
+  }
+  case INTEGER: {
+    std::string error_msg =
+        "evenscribe(config): " + field + " is missing or not a number\n";
+    if (!cJSON_IsNumber(field_value)) {
+      cJSON_Delete(json);
+      error(error_msg.c_str());
+    }
+    break;
+  }
+  }
+
+  return field_value;
+}
+
 static inline Config deserializeJsonToConfig(const std::string &jsonString) {
   Config config;
 
-  // Parse the JSON string
   cJSON *json = cJSON_Parse(jsonString.c_str());
   if (json == nullptr) {
     error("evenscribe(config): error parsing config file\n");
   }
 
-  // Extract clickhouse_host from JSON object
-  cJSON *host = cJSON_GetObjectItemCaseSensitive(json, "host");
-  if (!cJSON_IsString(host) || host->valuestring == nullptr) {
-    cJSON_Delete(json);
-    error("evenscribe(config): host is missing or not a string\n");
-  }
-  config.host = host->valuestring;
+  config.database_kind = get_database_kind(
+      get_json_field_value(json, "database_kind", STRING)->valuestring);
+  config.host = get_json_field_value(json, "host", STRING)->valuestring;
+  config.port = get_json_field_value(json, "port", INTEGER)->valuedouble;
 
-  // Extract clickhouse_port from JSON object
-  cJSON *port = cJSON_GetObjectItemCaseSensitive(json, "port");
-  if (!cJSON_IsNumber(port)) {
-    cJSON_Delete(json);
-    error("evenscribe(config): port is missing or not a number\n");
+  switch (config.database_kind) {
+  case POSTGRES: {
+    config.user = get_json_field_value(json, "user", STRING)->valuestring;
+    config.password =
+        get_json_field_value(json, "password", STRING)->valuestring;
+    config.dbname = get_json_field_value(json, "dbname", STRING)->valuestring;
+    break;
   }
-  config.port = port->valuedouble;
-
-  cJSON *database_kind =
-      cJSON_GetObjectItemCaseSensitive(json, "database_kind");
-  if (!cJSON_IsString(database_kind) || database_kind->valuestring == nullptr) {
-    cJSON_Delete(json);
-    error("evenscribe(config): database_kind is missing or not a string\n");
+  case CLICKHOUSE: {
+    break;
   }
-  config.database_kind = get_database_kind(database_kind->valuestring);
+  }
 
   cJSON_Delete(json);
 
@@ -132,7 +156,8 @@ static char *read_file(const char *filePath) {
 
 static Config config_to_tuple() {
   if (!config_file_exstis()) {
-    error("evenscribe(config): config file doesn't exist : $HOME/.evenscriberc\n");
+    error("evenscribe(config): config file doesn't exist : "
+          "$HOME/.evenscriberc\n");
   }
 
   char *path = get_config_file();

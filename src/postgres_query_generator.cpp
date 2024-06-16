@@ -1,5 +1,6 @@
 #include "helper.h"
 #include "query_generator.h"
+#include <string>
 
 class PostgresQueryGenerator : public QueryGenerator {
 public:
@@ -30,7 +31,7 @@ public:
   std::string getValues(const Log &entry) const {
     // clang-format off
     return commaSeparate({
-          between("to_timestamp(",entry.Timestamp,  ")"),
+          std::to_string(entry.Timestamp),
           wrap(entry.TraceId, "'"),
           wrap(entry.SpanId, "'"),
           std::to_string(entry.TraceFlags),

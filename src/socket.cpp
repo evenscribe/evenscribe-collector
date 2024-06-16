@@ -62,8 +62,8 @@ void process_clickhouse(void *arg) {
       try {
         clickhouse_db_connections[conn->thread_id].save(query);
         response = "OK";
-      } catch (const std::exception &e) {
-        warn(e.what());
+      } catch (...) {
+        warn("");
         response = "NO";
       }
       if (write(conn->client_socket, response, sizeof(char) * 2) == -1) {
@@ -191,8 +191,11 @@ void initialize_postgres() {
   // I tried a bunch of stuff but nothing did
   // Just letting the app crash and print the error
   for (int i = 0; i < THREADS; ++i) {
-    const auto conn = tao::pq::connection::create("dbname=evenscribe_db");
-    new (&postgres_db_connections[i]) PostgresPersistence(conn);
+    new (&postgres_db_connections[i])
+        PostgresPersistence(tao::pq::connection::create(
+            "postgres://"
+            "postgres.oznsvtaespxsxlczrgaf:AVNS_xiRKk2llMMZ4ZsdYWKT@aws-0-us-"
+            "east-1.pooler.supabase.com:6543/postgres"));
   }
   int i;
   for (i = 0; i < THREADS; ++i) {
