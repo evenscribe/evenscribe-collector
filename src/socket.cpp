@@ -1,35 +1,30 @@
 #include "socket.h"
-#include "clickhouse_persistence.cpp"
 #include "clickhouse_query_generator.cpp"
 #include "log.h"
 #include "param.h"
-#include "postgres_persistence.cpp"
 #include "postgres_query_generator.cpp"
 #include "serializer.h"
+#include "tao/pq/connection.hpp"
 #include <clickhouse/client.h>
 #include <cstdlib>
 #include <iostream>
 #include <mutex>
 #include <queue>
+#include <string>
 #include <sys/socket.h>
 #include <unistd.h>
 
 //
-ClickhouseQueryGenerator
-    clickhouse_query_generator; // should implement create_query
-                                // function from "query_generator.h"
-clickhouse::Client *clickhouse_db = (clickhouse::Client *)malloc(
-    sizeof(clickhouse::Client) * THREADS); // clickhouse instance array
-ClickhousePersistence *clickhouse_db_connections =
-    (ClickhousePersistence *)malloc(
-        sizeof(ClickhousePersistence) *
-        THREADS); // should implement save function from "persistence.h"
+ClickhouseQueryGenerator clickhouse_query_generator;
+clickhouse::Client *clickhouse_db =
+    (clickhouse::Client *)malloc(sizeof(clickhouse::Client) * THREADS);
 //
 
 //
 PostgresQueryGenerator postgres_query_generator;
-PostgresPersistence *postgres_db_connections =
-    (PostgresPersistence *)malloc(sizeof(PostgresPersistence) * THREADS);
+std::shared_ptr<tao::pq::connection> *postgres_db =
+    (std::shared_ptr<tao::pq::connection> *)malloc(
+        sizeof(std::shared_ptr<tao::pq::connection>) * THREADS);
 //
 
 typedef struct {
@@ -60,7 +55,7 @@ void process_clickhouse(void *arg) {
       std::string query = clickhouse_query_generator.create_query(entry);
       const char *response;
       try {
-        clickhouse_db_connections[conn->thread_id].save(query);
+        clickhouse_db[conn->thread_id].Execute(query);
         response = "OK";
       } catch (...) {
         warn("");
@@ -119,7 +114,7 @@ void process_postgres(void *arg) {
       std::string query = postgres_query_generator.create_query(entry);
       const char *response;
       try {
-        postgres_db_connections[conn->thread_id].save(query);
+        postgres_db[conn->thread_id]->execute(query);
         response = "OK";
       } catch (const std::exception &e) {
         warn(e.what());
@@ -183,19 +178,17 @@ void Socket::_listen() {
   }
 }
 
-void initialize_postgres() {
+void initialize_postgres(Config config) {
   free(clickhouse_db);
-  free(clickhouse_db_connections);
 
+  std::string db_connection_url =
+      "postgres://" + config.user + ":" + config.password + "@" + config.host +
+      ":" + std::to_string(config.port) + "/" + config.dbname;
   // FIXME: try catch doesn't work here
   // I tried a bunch of stuff but nothing did
   // Just letting the app crash and print the error
   for (int i = 0; i < THREADS; ++i) {
-    new (&postgres_db_connections[i])
-        PostgresPersistence(tao::pq::connection::create(
-            "postgres://"
-            "postgres.oznsvtaespxsxlczrgaf:AVNS_xiRKk2llMMZ4ZsdYWKT@aws-0-us-"
-            "east-1.pooler.supabase.com:6543/postgres"));
+    postgres_db[i] = tao::pq::connection::create(db_connection_url);
   }
   int i;
   for (i = 0; i < THREADS; ++i) {
@@ -208,15 +201,12 @@ void initialize_postgres() {
 }
 
 void initialize_clickhouse(Config config) {
-  free(postgres_db_connections);
   for (int i = 0; i < THREADS; ++i) {
     // FIXME: this shit right here throws error
     // but cannot be caught for some reason
     // doesn't even print a debug message
     new (&clickhouse_db[i]) clickhouse::Client(
         clickhouse::ClientOptions().SetHost(config.host).SetPort(config.port));
-    new (&clickhouse_db_connections[i])
-        ClickhousePersistence(&clickhouse_db[i]);
   }
   int i;
   for (i = 0; i < THREADS; ++i) {
@@ -241,7 +231,7 @@ Socket::Socket(Config config) {
 
   switch (config.database_kind) {
   case POSTGRES: {
-    initialize_postgres();
+    initialize_postgres(this->config);
     break;
   }
   case CLICKHOUSE: {
@@ -265,12 +255,10 @@ Socket::~Socket() {
 
   switch (this->config.database_kind) {
   case POSTGRES: {
-    free(postgres_db_connections);
     break;
   }
   case CLICKHOUSE: {
     free(clickhouse_db);
-    free(clickhouse_db_connections);
     break;
   }
   }
