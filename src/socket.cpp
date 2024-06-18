@@ -1,5 +1,6 @@
 #include "socket.h"
 #include "clickhouse_query_generator.cpp"
+#include "helper.h"
 #include "log.h"
 #include "param.h"
 #include "postgres_query_generator.cpp"
@@ -7,13 +8,22 @@
 #include "tao/pq/connection.hpp"
 #include <clickhouse/client.h>
 #include <cstdlib>
+#include <cstring>
+#include <ctime>
 #include <iostream>
 #include <mutex>
 #include <queue>
+#include <string.h>
 #include <string>
 #include <sys/socket.h>
 #include <unistd.h>
+#include <vector>
 #include <victorialogslib/client.h>
+
+//
+std::vector<std::vector<std::tuple<std::string, std::clock_t>>>
+    insert_statements(THREADS);
+//
 
 //
 ClickhouseQueryGenerator clickhouse_query_generator;
@@ -117,19 +127,41 @@ void process_postgres(void *arg) {
   if (read(conn->client_socket, buf, BUFFER_SIZE) > 0) {
     Log entry = Serializer::serialize(buf);
     if (entry.is_vaild) {
+
+      bool should_insert = false;
+      if (insert_statements[conn->thread_id].size() > 0) {
+        should_insert =
+            (std::clock() - std::get<1>(insert_statements[conn->thread_id][0]) /
+                                CLOCKS_PER_SEC) > 1;
+      }
+
       std::string query = postgres_query_generator.create_query(entry);
-      const char *response;
-      try {
-        postgres_db[conn->thread_id]->execute(query);
-        response = "OK";
-      } catch (const std::exception &e) {
-        warn(e.what());
-        response = "NO";
+      insert_statements[conn->thread_id].push_back(
+          std::make_tuple(query, std::clock()));
+      std::vector<std::string> query_strings;
+      query_strings.reserve(insert_statements[conn->thread_id].size());
+      for (const auto &t : insert_statements[conn->thread_id]) {
+        query_strings.push_back(std::get<0>(t));
       }
-      if (write(conn->client_socket, response, sizeof(char) * 2) == -1) {
-        warn("Write error.");
+
+      if (should_insert || insert_statements[conn->thread_id].size() == 18) {
+        std::ostringstream query_string;
+        query_string << between("INSERT INTO ", TABLE_NAME, " VALUES ")
+                     << commaSeparate(query_strings) << ";";
+        const char *response;
+        try {
+          postgres_db[conn->thread_id]->execute(query_string.str());
+          response = "OK";
+        } catch (const std::exception &e) {
+          warn(e.what());
+          response = "NO";
+        }
+        // if (write(conn->client_socket, response, sizeof(char) * 2) == -1) {
+        //   warn("Write error.");
+        // }
+        info("Save success.\n");
+        insert_statements[conn->thread_id].clear();
       }
-      info("Save success.\n");
     }
   } else {
     warn("Socket buffer read error.");

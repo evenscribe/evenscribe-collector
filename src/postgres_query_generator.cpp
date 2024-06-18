@@ -8,8 +8,7 @@ public:
 
   std::string create_query(Log &log) const override {
     std::stringstream str;
-    str << between("INSERT INTO ", TABLE_NAME, " VALUES ")
-        << between("(", getValues(log), ");");
+    str << between("(", getValues(log), ")");
     return str.str();
   }
 
