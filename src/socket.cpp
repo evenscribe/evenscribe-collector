@@ -15,13 +15,14 @@
 #include <queue>
 #include <string.h>
 #include <string>
+#include <sys/fcntl.h>
 #include <sys/socket.h>
 #include <unistd.h>
 #include <vector>
 #include <victorialogslib/client.h>
 
 //
-std::vector<std::vector<std::tuple<std::string, std::clock_t>>>
+std::vector<std::vector<std::tuple<std::string, time_t>>>
     insert_statements(THREADS);
 //
 
@@ -82,9 +83,10 @@ void process_clickhouse(void *arg) {
       }
       std::cout << "Save success.\n";
     }
-  } else {
-    warn("Socket buffer read error.");
   }
+  // else {
+  //   warn("Socket buffer read error.");
+  // }
 
   close(conn->client_socket);
   delete conn;
@@ -115,6 +117,37 @@ void *worker_clickhouse(void *arg) {
   pthread_exit(nullptr);
 }
 
+std::string read_socket(int socket_fd) {
+  std::string sockResponseString;
+  auto can_read = [](int s) -> bool {
+    fd_set read_set;
+    FD_ZERO(&read_set);
+    FD_SET(s, &read_set);
+    struct timeval timeout {};
+    int rc = select(s + 1, &read_set, NULL, NULL, &timeout);
+    return (rc == 1) && FD_ISSET(s, &read_set);
+  };
+  auto do_read = [&sockResponseString](int s) -> bool {
+    char buf[BUFFER_SIZE];
+    int nbytes = recv(s, buf, sizeof(buf), 0);
+    if (nbytes <= 0)
+      return false;
+    sockResponseString += std::string(buf, static_cast<size_t>(nbytes));
+    return true;
+  };
+  bool done{};
+  while (!done) {
+    if (can_read(socket_fd) && do_read(socket_fd)) {
+      while (!done) {
+        if (!can_read(socket_fd))
+          done = true;
+        do_read(socket_fd);
+      }
+    }
+  }
+  return sockResponseString;
+}
+
 void process_postgres(void *arg) {
   connection_t *conn = (connection_t *)arg;
 
@@ -122,50 +155,39 @@ void process_postgres(void *arg) {
     return;
   }
 
-  char buf[BUFFER_SIZE];
+  std::string buf = read_socket(conn->client_socket);
 
-  if (read(conn->client_socket, buf, BUFFER_SIZE) > 0) {
-    Log entry = Serializer::serialize(buf);
-    if (entry.is_vaild) {
+  Log entry = Serializer::serialize(buf);
+  if (entry.is_vaild) {
+    std::string query = postgres_query_generator.create_query(entry);
+    insert_statements[conn->thread_id].push_back(
+        std::make_tuple(query, time(NULL)));
 
-      bool should_insert = false;
-      if (insert_statements[conn->thread_id].size() > 0) {
-        should_insert =
-            (std::clock() - std::get<1>(insert_statements[conn->thread_id][0]) /
-                                CLOCKS_PER_SEC) > 1;
+    std::string query_string =
+        get_query_from_bucket(insert_statements[conn->thread_id]);
+
+    if (insert_statements[conn->thread_id].size() == 18) {
+      const char *response;
+      try {
+        postgres_db[conn->thread_id]->execute(query_string);
+        response = "OK";
+      } catch (const std::exception &e) {
+        warn(e.what());
+        response = "NO";
       }
-
-      std::string query = postgres_query_generator.create_query(entry);
-      insert_statements[conn->thread_id].push_back(
-          std::make_tuple(query, std::clock()));
-      std::vector<std::string> query_strings;
-      query_strings.reserve(insert_statements[conn->thread_id].size());
-      for (const auto &t : insert_statements[conn->thread_id]) {
-        query_strings.push_back(std::get<0>(t));
-      }
-
-      if (should_insert || insert_statements[conn->thread_id].size() == 18) {
-        std::ostringstream query_string;
-        query_string << between("INSERT INTO ", TABLE_NAME, " VALUES ")
-                     << commaSeparate(query_strings) << ";";
-        const char *response;
-        try {
-          postgres_db[conn->thread_id]->execute(query_string.str());
-          response = "OK";
-        } catch (const std::exception &e) {
-          warn(e.what());
-          response = "NO";
-        }
-        // if (write(conn->client_socket, response, sizeof(char) * 2) == -1) {
-        //   warn("Write error.");
-        // }
-        info("Save success.\n");
-        insert_statements[conn->thread_id].clear();
-      }
+      // if (write(conn->client_socket, response, sizeof(char) * 2) == -1) {
+      //   warn("Write error.");
+      // }
+      info("Save success.\n");
+      insert_statements[conn->thread_id].clear();
     }
-  } else {
-    warn("Socket buffer read error.");
   }
+  // }
+
+  // else {
+  // warn("Socket buffer read error.");
+  // }
+  //
 
   close(conn->client_socket);
   delete conn;
@@ -325,6 +347,20 @@ void initialize_victoria(Config config) {
   }
 }
 
+void fd_set_nb(int fd) {
+  errno = 0;
+  int flags = fcntl(fd, F_GETFL, 0);
+  if (errno) {
+    error("couldn't set non-blocking");
+  }
+  flags |= O_NONBLOCK;
+  errno = 0;
+  (void)fcntl(fd, F_SETFL, flags);
+  if (errno) {
+    error("couldn't set non-blocking");
+  }
+}
+
 Socket::Socket(Config config) {
   this->config = config;
   server_socket = socket(AF_UNIX, SOCK_STREAM, 0);
@@ -335,6 +371,8 @@ Socket::Socket(Config config) {
   _sanitize();
   _bind();
   _listen();
+
+  fd_set_nb(server_socket);
 
   switch (config.database_kind) {
   case POSTGRES: {
@@ -374,14 +412,31 @@ Socket::~Socket() {
   remove(SOCKET_PATH);
 }
 
+/// 10s before
+/// [a ,  a,  a,  a]
+
 void Socket::handle_message() {
   while (true) {
-    info("\nWaiting to accept a connection...\n");
+    for (auto &bucket : insert_statements) {
+      if (bucket.size() > 0) {
+        bool should_insert = difftime(time(NULL), std::get<1>(bucket[0])) > 10;
+        if (should_insert) {
+          std::string query_string = get_query_from_bucket(bucket);
+          try {
+            postgres_db[0]->execute(query_string);
+          } catch (const std::exception &e) {
+            warn(e.what());
+          }
+          info("Save success auto.\n");
+          bucket.clear();
+        }
+      }
+    }
 
     int client_socket = accept(server_socket, NULL, NULL);
 
     if (client_socket == -1) {
-      warn("accept connection failed");
+      // warn("accept connection failed");
       continue;
     }
 

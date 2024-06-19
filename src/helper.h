@@ -4,6 +4,7 @@
 #include "param.h"
 #include <cstdlib>
 #include <cstring>
+#include <ctime>
 #include <sstream>
 #include <string>
 #include <sys/stat.h>
@@ -58,6 +59,19 @@ static inline std::string commaSeparate(const std::vector<std::string> &arr) {
     }
   }
   return oss.str();
+}
+
+static inline std::string
+get_query_from_bucket(std::vector<std::tuple<std::string, time_t>> bucket) {
+  std::vector<std::string> query_strings;
+  query_strings.reserve(bucket.size());
+  for (const auto &t : bucket) {
+    query_strings.push_back(std::get<0>(t));
+  }
+  std::ostringstream query_string;
+  query_string << between("INSERT INTO ", TABLE_NAME, " VALUES ")
+               << commaSeparate(query_strings) << ";";
+  return query_string.str();
 }
 
 #endif // !HELPER
