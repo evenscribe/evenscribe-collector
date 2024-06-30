@@ -1,6 +1,7 @@
 #include "serializer.h"
 #include "cJSON.h"
 #include "log.h"
+#include "param.h"
 
 enum DataKind { INTEGER, STRING };
 
@@ -35,7 +36,7 @@ static inline cJSON *get_json_field_value(cJSON *json, std::string field,
 
 Log parse(std::string jsonString) {
   Log log;
-  cJSON *json = cJSON_Parse(jsonString.c_str());
+  cJSON *json = cJSON_ParseWithLength(jsonString.c_str(), BUFFER_SIZE);
 
   log.is_vaild = true;
 

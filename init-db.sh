@@ -4,7 +4,7 @@ set -e
 clickhouse client -n <<-EOSQL
     CREATE TABLE IF NOT EXISTS logs
     (
-        Timestamp DateTime64(9),
+        Timestamp DateTime CODEC(DoubleDelta, ZSTD(1)),
         TraceId String,
         SpanId String,
         TraceFlags UInt32,
@@ -14,21 +14,21 @@ clickhouse client -n <<-EOSQL
         Body String,
         ResourceAttributes Map(LowCardinality(String), String),
         LogAttributes Map(LowCardinality(String), String),
-        INDEX idx_trace_id TraceId TYPE bloom_filter GRANULARITY 1,
-        INDEX idx_res_attr_key mapKeys(ResourceAttributes) TYPE bloom_filter GRANULARITY 1,
-        INDEX idx_res_attr_value mapValues(ResourceAttributes) TYPE bloom_filter GRANULARITY 1,
-        INDEX idx_log_attr_key mapKeys(LogAttributes) TYPE bloom_filter GRANULARITY 1,
-        INDEX idx_log_attr_value mapValues(LogAttributes) TYPE bloom_filter GRANULARITY 1,
-        INDEX idx_body Body TYPE tokenbf_v1(32768, 3, 0) GRANULARITY 1
+        # INDEX idx_trace_id TraceId TYPE bloom_filter GRANULARITY 1,
+        # INDEX idx_res_attr_key mapKeys(ResourceAttributes) TYPE bloom_filter GRANULARITY 1,
+        # INDEX idx_res_attr_value mapValues(ResourceAttributes) TYPE bloom_filter GRANULARITY 1,
+        # INDEX idx_log_attr_key mapKeys(LogAttributes) TYPE bloom_filter GRANULARITY 1,
+        # INDEX idx_log_attr_value mapValues(LogAttributes) TYPE bloom_filter GRANULARITY 1,
+        # INDEX idx_body Body TYPE tokenbf_v1(32768, 3, 0) GRANULARITY 1
     )
     engine MergeTree()
         partition by toDate(Timestamp)
         order by (ServiceName, SeverityText, toUnixTimestamp(Timestamp), TraceId);
 
-    INSERT INTO logs VALUES (toDateTime64('2024-05-27 00:01:02.123456789', 9), '0a1b2c3d4e5f6a7b', 'a1b2c3d4e5f6a7b8', 1, 'INFO', 1, 'auth-service', 'User login successful', {'host': 'auth-server-1', 'region': 'us-west'}, {'user_id': '12345', 'status': 'successful'});
-    INSERT INTO logs VALUES (toDateTime64('2024-05-27 00:02:03.234567890', 9), '1a2b3c4d5e6f7a8b', 'b1c2d3e4f5g6h7i8', 1, 'ERROR', 3, 'payment-service', 'Payment failed due to insufficient funds', {'host': 'payment-server-1', 'region': 'us-east'}, {'transaction_id': '67890', 'error_code': '101'});
-    INSERT INTO logs VALUES (toDateTime64('2024-05-27 00:03:04.345678901', 9), '2a3b4c5d6e7f8a9b', 'c1d2e3f4g5h6i7j8', 1, 'WARN', 2, 'order-service', 'Order shipment delayed', {'host': 'order-server-1', 'region': 'eu-central'}, {'order_id': '54321', 'status': 'delayed'});
-    INSERT INTO logs VALUES (toDateTime64('2024-05-27 00:04:05.456789012', 9), '3a4b5c6d7e8f9a0b', 'd1e2f3g4h5i6j7k8', 1, 'INFO', 1, 'auth-service', 'User password reset', {'host': 'auth-server-2', 'region': 'us-west'}, {'user_id': '12346', 'status': 'reset'});
+    INSERT INTO logs VALUES (toDateTime('2024-05-27 00:01:02.123456789', 9), '0a1b2c3d4e5f6a7b', 'a1b2c3d4e5f6a7b8', 1, 'INFO', 1, 'auth-service', 'User login successful', {'host': 'auth-server-1', 'region': 'us-west'}, {'user_id': '12345', 'status': 'successful'});
+    INSERT INTO logs VALUES (toDateTime('2024-05-27 00:02:03.234567890', 9), '1a2b3c4d5e6f7a8b', 'b1c2d3e4f5g6h7i8', 1, 'ERROR', 3, 'payment-service', 'Payment failed due to insufficient funds', {'host': 'payment-server-1', 'region': 'us-east'}, {'transaction_id': '67890', 'error_code': '101'});
+    INSERT INTO logs VALUES (toDateTime('2024-05-27 00:03:04.345678901', 9), '2a3b4c5d6e7f8a9b', 'c1d2e3f4g5h6i7j8', 1, 'WARN', 2, 'order-service', 'Order shipment delayed', {'host': 'order-server-1', 'region': 'eu-central'}, {'order_id': '54321', 'status': 'delayed'});
+    INSERT INTO logs VALUES (toDateTime('2024-05-27 00:04:05.456789012', 9), '3a4b5c6d7e8f9a0b', 'd1e2f3g4h5i6j7k8', 1, 'INFO', 1, 'auth-service', 'User password reset', {'host': 'auth-server-2', 'region': 'us-west'}, {'user_id': '12346', 'status': 'reset'});
     INSERT INTO logs VALUES (toDateTime64('2024-05-27 00:05:06.567890123', 9), '4a5b6c7d8e9f0a1b', 'e1f2g3h4i5j6k7l8', 1, 'ERROR', 3, 'payment-service', 'Payment declined by bank', {'host': 'payment-server-2', 'region': 'us-east'}, {'transaction_id': '67891', 'error_code': '102'});
     INSERT INTO logs VALUES (toDateTime64('2024-05-27 00:06:07.678901234', 9), '5a6b7c8d9e0f1a2b', 'f1g2h3i4j5k6l7m8', 1, 'WARN', 2, 'order-service', 'Order address verification failed', {'host': 'order-server-2', 'region': 'eu-central'}, {'order_id': '54322', 'status': 'failed'});
     INSERT INTO logs VALUES (toDateTime64('2024-05-27 00:07:08.789012345', 9), '6a7b8c9d0e1f2a3b', 'g1h2i3j4k5l6m7n8', 1, 'INFO', 1, 'auth-service', 'User email updated', {'host': 'auth-server-3', 'region': 'us-west'}, {'user_id': '12347', 'status': 'updated'});

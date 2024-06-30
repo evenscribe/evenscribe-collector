@@ -7,8 +7,14 @@
 #include <ctime>
 #include <sstream>
 #include <string>
+#include <sys/socket.h>
 #include <sys/stat.h>
 #include <vector>
+
+typedef struct {
+  int client_socket;
+  int thread_id;
+} connection_t;
 
 static inline bool file_exists(char *filename) {
   struct stat buffer;
@@ -72,6 +78,23 @@ get_query_from_bucket(std::vector<std::tuple<std::string, time_t>> bucket) {
   query_string << between("INSERT INTO ", TABLE_NAME, " VALUES ")
                << commaSeparate(query_strings) << ";";
   return query_string.str();
+}
+
+static bool is_socket_open(int sockfd) {
+  char buffer;
+  ssize_t result = recv(sockfd, &buffer, 1, MSG_PEEK);
+
+  if (result == 0) {
+    return false;
+  } else if (result < 0) {
+    if (errno == EAGAIN || errno == EWOULDBLOCK) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 #endif // !HELPER

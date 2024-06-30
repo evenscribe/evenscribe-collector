@@ -6,9 +6,11 @@ psql <<-EOSQL
 
     \c evenscribe_db;
 
-    CREATE TABLE IF NOT EXISTS logs
+    DROP TABLE IF EXISTS logs;
+
+    CREATE TABLE logs
     (
-        Timestamp TIMESTAMP,
+        Timestamp INT,
         TraceId VARCHAR(255),
         SpanId VARCHAR(255),
         TraceFlags INT,
