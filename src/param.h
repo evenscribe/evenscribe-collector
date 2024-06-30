@@ -3,4 +3,5 @@
 #define CONFIG_PATH "/.evenscriberc"
 #define SOCKET_PATH "/tmp/olympus_socket.sock"
 #define TABLE_NAME "logs"
-#define THREADS 4
+#define CONN_THREADS 2
+#define WRITE_THREADS 4

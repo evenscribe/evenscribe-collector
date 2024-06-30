@@ -19,11 +19,11 @@
 //
 ClickhouseQueryGenerator clickhouse_query_generator;
 clickhouse::Client *clickhouse_db =
-    (clickhouse::Client *)malloc(sizeof(clickhouse::Client) * THREADS);
+    (clickhouse::Client *)malloc(sizeof(clickhouse::Client) * WRITE_THREADS);
 //
 
 //
-pthread_t conn_threads[THREADS];
+pthread_t conn_threads[CONN_THREADS];
 std::queue<connection_t *> conn_queue;
 pthread_mutex_t conn_mtx = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t conn_cond_var = PTHREAD_COND_INITIALIZER;
@@ -32,7 +32,7 @@ bool conn_done = false;
 
 //
 std::vector<std::tuple<std::string, time_t>> insert_statements;
-pthread_t write_threads[THREADS];
+pthread_t write_threads[WRITE_THREADS];
 pthread_mutex_t write_mtx = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t write_cond_var = PTHREAD_COND_INITIALIZER;
 bool write_done = false;
@@ -110,7 +110,7 @@ void Socket::_listen() {
 }
 
 void initialize_clickhouse(Config config) {
-  for (int i = 0; i < THREADS; ++i) {
+  for (int i = 0; i < WRITE_THREADS; ++i) {
     // FIXME: this shit right here throws error
     // but cannot be caught for some reason
     // doesn't even print a debug message
@@ -122,8 +122,7 @@ void initialize_clickhouse(Config config) {
             .SetPassword("gZ_m_0~ZCKgKT")
             .SetSSLOptions(clickhouse::ClientOptions::SSLOptions()));
   }
-  int i;
-  for (i = 0; i < THREADS; ++i) {
+  for (int i = 0; i < CONN_THREADS; ++i) {
     int *a = (int *)malloc(sizeof(int));
     *a = i;
     if (pthread_create(&conn_threads[i], nullptr, *worker_clickhouse, a) != 0) {
@@ -163,8 +162,12 @@ Socket::~Socket() {
     pthread_mutex_unlock(&conn_mtx);
   }
 
-  for (int i = 0; i < THREADS; ++i) {
+  for (int i = 0; i < CONN_THREADS; ++i) {
     pthread_join(conn_threads[i], nullptr);
+  }
+
+  for (int i = 0; i < WRITE_THREADS; ++i) {
+    pthread_join(write_threads[i], nullptr);
   }
 
   switch (this->config.database_kind) {

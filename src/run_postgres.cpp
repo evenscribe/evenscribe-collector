@@ -5,23 +5,24 @@
 #include <queue>
 #include <unistd.h>
 
-extern pthread_t conn_threads[THREADS];
+extern pthread_t conn_threads[CONN_THREADS];
 extern std::queue<connection_t *> conn_queue;
 extern pthread_mutex_t conn_mtx;
 extern pthread_cond_t conn_cond_var;
 extern bool conn_done;
 
 extern std::vector<std::tuple<std::string, time_t>> insert_statements;
-extern pthread_t write_threads[THREADS];
+extern pthread_t write_threads[WRITE_THREADS];
 extern pthread_mutex_t write_mtx;
 extern pthread_cond_t write_cond_var;
 extern bool write_done;
 
 const uint16_t SAVE_THRESHOLD = 1000;
+
 PostgresQueryGenerator postgres_query_generator;
 std::shared_ptr<tao::pq::connection> *db =
     (std::shared_ptr<tao::pq::connection> *)malloc(
-        sizeof(std::shared_ptr<tao::pq::connection>) * THREADS);
+        sizeof(std::shared_ptr<tao::pq::connection>) * WRITE_THREADS);
 
 void *conn_worker(void *arg) {
   while (true) {
@@ -62,20 +63,20 @@ void *conn_worker(void *arg) {
 
 void *write_worker(void *arg) {
   while (true) {
-    // if (insert_statements.size() > 0) {
-    //   bool should_insert =
-    //       difftime(time(NULL), std::get<1>(insert_statements[0])) > 10;
-    //   if (should_insert) {
-    //     std::string query_string = get_query_from_bucket(insert_statements);
-    //     try {
-    //       db[0]->execute(query_string);
-    //     } catch (const std::exception &e) {
-    //       warn(e.what());
-    //     }
-    //     info("Save success auto.\n");
-    //     insert_statements.clear();
-    //   }
-    // }
+    if (insert_statements.size() > 0) {
+      bool should_insert =
+          difftime(time(NULL), std::get<1>(insert_statements[0])) > 10;
+      if (should_insert) {
+        std::string query_string = get_query_from_bucket(insert_statements);
+        try {
+          db[0]->execute(query_string);
+        } catch (const std::exception &e) {
+          warn(e.what());
+        }
+        info("Save success auto.\n");
+        insert_statements.clear();
+      }
+    }
 
     int index = *((int *)arg);
 
@@ -109,17 +110,21 @@ void run_postgres(Config config) {
       "postgres://" + config.user + ":" + config.password + "@" + config.host +
       ":" + std::to_string(config.port) + "/" + config.dbname;
 
-  for (int i = 0; i < THREADS; ++i) {
+  for (int i = 0; i < CONN_THREADS; ++i) {
+    int *a = (int *)malloc(sizeof(int));
+    *a = i;
+    if (pthread_create(&conn_threads[i], nullptr, *conn_worker, a) != 0) {
+      error("create thread failed");
+    }
+  }
+
+  for (int i = 0; i < WRITE_THREADS; ++i) {
     int *a = (int *)malloc(sizeof(int));
     *a = i;
     // FIXME: try catch doesn't work here
     // I tried a bunch of stuff but nothing did
     // Just letting the app crash and print the error
     db[i] = tao::pq::connection::create(db_connection_url);
-    if (pthread_create(&conn_threads[i], nullptr, *conn_worker, a) != 0) {
-      error("create thread failed");
-    }
-
     if (pthread_create(&write_threads[i], nullptr, *write_worker, a) != 0) {
       error("create thread failed");
     }
