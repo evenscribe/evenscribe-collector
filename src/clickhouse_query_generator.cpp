@@ -1,15 +1,14 @@
 #include "helper.h"
-#include "query_generator.h"
+#include "serializer.h"
 #include <string>
 
-class ClickhouseQueryGenerator : public QueryGenerator {
+class ClickhouseQueryGenerator {
 public:
   ClickhouseQueryGenerator() {}
 
-  std::string create_query(Log &log) const override {
+  std::string create_subquery(Log &log) {
     std::stringstream str;
-    str << between("INSERT INTO ", TABLE_NAME, " VALUES ")
-        << between("(", getValues(log), ");");
+    str << between("(", getValues(log), ")");
     return str.str();
   }
 
@@ -26,6 +25,19 @@ public:
     }
     oss << "}";
     return oss.str();
+  }
+
+  static std::string
+  create_query(std::vector<std::tuple<std::string, time_t>> bucket) {
+    std::vector<std::string> query_strings;
+    query_strings.reserve(bucket.size());
+    for (const auto &t : bucket) {
+      query_strings.push_back(std::get<0>(t));
+    }
+    std::ostringstream query_string;
+    query_string << between("INSERT INTO ", TABLE_NAME, " VALUES ")
+                 << commaSeparate(query_strings) << ";";
+    return query_string.str();
   }
 
   std::string getValues(const Log &entry) const {

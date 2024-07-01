@@ -1,7 +1,9 @@
+#include "clickhouse_query_generator.cpp"
 #include "config.h"
 #include "helper.h"
-#include "postgres_query_generator.cpp"
-#include "tao/pq/connection.hpp"
+#include "log.h"
+#include "param.h"
+#include <clickhouse/client.h>
 #include <queue>
 #include <unistd.h>
 
@@ -17,12 +19,11 @@ extern pthread_mutex_t write_mtx;
 extern pthread_cond_t write_cond_var;
 extern bool write_done;
 
-PostgresQueryGenerator postgres_query_generator;
-std::shared_ptr<tao::pq::connection> *db_postgres =
-    (std::shared_ptr<tao::pq::connection> *)malloc(
-        sizeof(std::shared_ptr<tao::pq::connection>) * WRITE_THREADS);
+ClickhouseQueryGenerator clickhouse_query_generator;
+clickhouse::Client *db_clickhouse =
+    (clickhouse::Client *)malloc(sizeof(clickhouse::Client) * WRITE_THREADS);
 
-void *conn_worker_postgres(void *arg) {
+static void *conn_worker_clickhouse(void *arg) {
   while (true) {
     int index = *((int *)arg);
     pthread_mutex_lock(&conn_mtx);
@@ -44,7 +45,7 @@ void *conn_worker_postgres(void *arg) {
            read(conn->client_socket, buf, BUFFER_SIZE) > 0) {
       Log entry = Serializer::serialize(buf);
       if (entry.is_vaild) {
-        std::string query = postgres_query_generator.create_subquery(entry);
+        std::string query = clickhouse_query_generator.create_subquery(entry);
         pthread_mutex_lock(&write_mtx);
         insert_statements.push_back(std::make_tuple(query, time(NULL)));
         pthread_cond_broadcast(&write_cond_var);
@@ -59,7 +60,7 @@ void *conn_worker_postgres(void *arg) {
   pthread_exit(nullptr);
 }
 
-void *write_worker_postgres(void *arg) {
+static void *write_worker_clickhouse(void *arg) {
   while (true) {
     if (insert_statements.size() > 0) {
       bool should_insert =
@@ -67,7 +68,7 @@ void *write_worker_postgres(void *arg) {
       if (should_insert) {
         std::string query_string = get_query_from_bucket(insert_statements);
         try {
-          db_postgres[0]->execute(query_string);
+          db_clickhouse[0].Execute(query_string);
         } catch (const std::exception &e) {
           warn(e.what());
         }
@@ -94,24 +95,20 @@ void *write_worker_postgres(void *arg) {
     pthread_mutex_unlock(&write_mtx);
 
     std::string query_string =
-        postgres_query_generator.create_query(thread_copy);
-    db_postgres[index]->execute(query_string);
+        clickhouse_query_generator.create_query(thread_copy);
+    db_clickhouse[index].Execute(query_string);
     info("Save success.\n");
   }
-
   free(arg);
   pthread_exit(nullptr);
 }
 
-void run_postgres(Config config) {
-  std::string db_connection_url =
-      "postgres://" + config.user + ":" + config.password + "@" + config.host +
-      ":" + std::to_string(config.port) + "/" + config.dbname;
-
+void run_clickhouse(Config config) {
   for (int i = 0; i < CONN_THREADS; ++i) {
     int *a = (int *)malloc(sizeof(int));
     *a = i;
-    if (pthread_create(&conn_threads[i], nullptr, *conn_worker_postgres, a) != 0) {
+    if (pthread_create(&conn_threads[i], nullptr, *conn_worker_clickhouse, a) !=
+        0) {
       error("create thread failed");
     }
   }
@@ -119,11 +116,19 @@ void run_postgres(Config config) {
   for (int i = 0; i < WRITE_THREADS; ++i) {
     int *a = (int *)malloc(sizeof(int));
     *a = i;
-    // FIXME: try catch doesn't work here
-    // I tried a bunch of stuff but nothing did
-    // Just letting the app crash and print the error
-    db_postgres[i] = tao::pq::connection::create(db_connection_url);
-    if (pthread_create(&write_threads[i], nullptr, *write_worker_postgres, a) != 0) {
+    // FIXME: this shit right here throws error
+    // but cannot be caught for some reason
+    // doesn't even print a debug message
+    new (&db_clickhouse[i]) clickhouse::Client(
+        clickhouse::ClientOptions()
+            // .SetSSLOptions(clickhouse::ClientOptions::SSLOptions())
+            .SetHost(config.host)
+            .SetPort(config.port)
+            // .SetUser(config.user)
+            // .SetPassword(config.password)
+            );
+    if (pthread_create(&write_threads[i], nullptr, *write_worker_clickhouse,
+                       a) != 0) {
       error("create thread failed");
     }
   }

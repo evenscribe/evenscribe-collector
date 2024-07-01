@@ -5,3 +5,4 @@
 #define TABLE_NAME "logs"
 #define CONN_THREADS 2
 #define WRITE_THREADS 4
+#define SAVE_THRESHOLD 100000
