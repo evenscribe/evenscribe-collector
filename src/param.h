@@ -4,5 +4,6 @@
 #define SOCKET_PATH "/tmp/olympus_socket.sock"
 #define TABLE_NAME "logs"
 #define CONN_THREADS 2
+#define READ_THREADS 4
 #define WRITE_THREADS 4
-#define SAVE_THRESHOLD 100000
+#define SAVE_THRESHOLD 1000

@@ -15,11 +15,19 @@
 #include <vector>
 
 //
-pthread_t conn_threads[CONN_THREADS];
 std::queue<connection_t *> conn_queue;
+pthread_t conn_threads[CONN_THREADS];
 pthread_mutex_t conn_mtx = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t conn_cond_var = PTHREAD_COND_INITIALIZER;
 bool conn_done = false;
+//
+
+//
+std::queue<std::string> read_queue;
+pthread_t read_threads[READ_THREADS];
+pthread_mutex_t read_mtx = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t read_cond_var = PTHREAD_COND_INITIALIZER;
+bool read_done = false;
 //
 
 //
@@ -82,11 +90,11 @@ Socket::~Socket() {
   }
 
   for (int i = 0; i < CONN_THREADS; ++i) {
-    pthread_join(conn_threads[i], nullptr);
+    pthread_join(conn_threads[i], NULL);
   }
 
   for (int i = 0; i < WRITE_THREADS; ++i) {
-    pthread_join(write_threads[i], nullptr);
+    pthread_join(write_threads[i], NULL);
   }
 
   close(server_socket);
