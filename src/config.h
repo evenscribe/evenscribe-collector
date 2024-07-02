@@ -84,6 +84,9 @@ static inline Config deserializeJsonToConfig(const std::string &jsonString) {
     break;
   }
   case CLICKHOUSE: {
+    config.user = get_json_field_value(json, "user", STRING)->valuestring;
+    config.password =
+        get_json_field_value(json, "password", STRING)->valuestring;
     break;
   }
   }

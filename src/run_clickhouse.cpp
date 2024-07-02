@@ -154,12 +154,11 @@ void run_clickhouse(Config config) {
     // doesn't even print a debug message
     new (&db_clickhouse[i]) clickhouse::Client(
         clickhouse::ClientOptions()
-            // .SetSSLOptions(clickhouse::ClientOptions::SSLOptions())
             .SetHost(config.host)
             .SetPort(config.port)
-        // .SetUser(config.user)
-        // .SetPassword(config.password)
-    );
+            .SetUser(config.user)
+            .SetPassword(config.password)
+            .SetSSLOptions(clickhouse::ClientOptions::SSLOptions()));
     if (pthread_create(&write_threads[i], nullptr, *write_worker_clickhouse,
                        a) != 0) {
       error("create thread failed");
