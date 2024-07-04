@@ -1,7 +1,7 @@
 #include "socket.h"
 #include "log.h"
 #include "param.h"
-#include "run_clickhouse.cpp"
+// #include "run_clickhouse.cpp"
 #include "run_postgres.cpp"
 #include <cstdlib>
 #include <cstring>
@@ -23,7 +23,7 @@ bool conn_done = false;
 //
 
 //
-std::queue<std::string> read_queue;
+std::queue<char *> read_queue;
 pthread_t read_threads[READ_THREADS];
 pthread_mutex_t read_mtx = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t read_cond_var = PTHREAD_COND_INITIALIZER;
@@ -75,7 +75,7 @@ Socket::Socket(Config config) {
     break;
   }
   case CLICKHOUSE: {
-    run_clickhouse(this->config);
+    // run_clickhouse(this->config);
     break;
   }
   }

@@ -90,20 +90,6 @@ void *read_worker_clickhouse(void *arg) {
 
 void *write_worker_clickhouse(void *arg) {
   while (true) {
-    // if (insert_statements.size() > 0) {
-    //   bool should_insert =
-    //       difftime(time(NULL), std::get<1>(insert_statements[0])) > 10;
-    //   if (should_insert) {
-    //     std::string query_string = get_query_from_bucket(insert_statements);
-    //     try {
-    //       db_clickhouse[0].Execute(query_string);
-    //     } catch (const std::exception &e) {
-    //       warn(e.what());
-    //     }
-    //     info("Save success auto.\n");
-    //     insert_statements.clear();
-    //   }
-    // }
 
     int index = *((int *)arg);
 

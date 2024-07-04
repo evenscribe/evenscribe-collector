@@ -2,7 +2,10 @@
 #include "helper.h"
 #include "postgres_query_generator.cpp"
 #include "tao/pq/connection.hpp"
+#include <cstdlib>
+#include <cstring>
 #include <queue>
+#include <string>
 #include <unistd.h>
 
 extern pthread_t conn_threads[CONN_THREADS];
@@ -11,7 +14,7 @@ extern pthread_mutex_t conn_mtx;
 extern pthread_cond_t conn_cond_var;
 extern bool conn_done;
 
-extern std::queue<std::string> read_queue;
+extern std::queue<char *> read_queue;
 extern pthread_t read_threads[READ_THREADS];
 extern pthread_mutex_t read_mtx;
 extern pthread_cond_t read_cond_var;
@@ -69,7 +72,7 @@ void *read_worker_postgres(void *arg) {
       break;
     }
 
-    std::string buf = read_queue.front();
+    char *buf = read_queue.front();
     read_queue.pop();
     pthread_mutex_unlock(&read_mtx);
 
@@ -122,15 +125,15 @@ void run_postgres(Config config) {
       ":" + std::to_string(config.port) + "/" + config.dbname;
 
   for (int i = 0; i < CONN_THREADS; ++i) {
-    if (pthread_create(&conn_threads[i], NULL, *conn_worker_postgres,
-                       NULL) != 0) {
+    if (pthread_create(&conn_threads[i], NULL, *conn_worker_postgres, NULL) !=
+        0) {
       error("create thread failed");
     }
   }
 
   for (int i = 0; i < READ_THREADS; ++i) {
-    if (pthread_create(&read_threads[i], NULL, *read_worker_postgres,
-                       NULL) != 0) {
+    if (pthread_create(&read_threads[i], NULL, *read_worker_postgres, NULL) !=
+        0) {
       error("create thread failed");
     }
   }

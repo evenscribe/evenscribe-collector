@@ -2,6 +2,7 @@
 #include "cJSON.h"
 #include "log.h"
 #include "param.h"
+#include <string>
 
 enum Field {
   TIMESTAMP,
@@ -39,8 +40,8 @@ static void set_json_field_value(cJSON *json, std::string field,
   cJSON *field_value = cJSON_GetObjectItemCaseSensitive(json, field.c_str());
   switch (data_kind) {
   case STRING: {
-    std::string error_msg =
-        "evenscribe(log): " + field + " is missing or not a string\n";
+    std::string error_msg = "evenscribe(log): " + std::string(field) +
+                            " is missing or not a string\n";
     if (!cJSON_IsString(field_value) || field_value->valuestring == nullptr) {
       warn(error_msg.c_str());
       log->is_vaild = false;
@@ -59,8 +60,8 @@ static void set_json_field_value(cJSON *json, std::string field,
     break;
   }
   case INTEGER: {
-    std::string error_msg =
-        "evenscribe(log): " + field + " is missing or not a number\n";
+    std::string error_msg = "evenscribe(log): " + std::string(field) +
+                            " is missing or not a number\n";
     if (!cJSON_IsNumber(field_value)) {
       warn(error_msg.c_str());
       log->is_vaild = false;
@@ -79,15 +80,15 @@ static void set_json_field_value(cJSON *json, std::string field,
   }
 }
 
-Log parse(std::string jsonString) {
+Log parse(char *jsonString)  {
   Log log;
-  cJSON *json = cJSON_ParseWithLength(jsonString.c_str(), BUFFER_SIZE);
+  cJSON *json = cJSON_ParseWithLength(jsonString, BUFFER_SIZE);
 
   log.is_vaild = true;
 
   if (json == nullptr) {
     warn("evenscribe(log): invalid json received\n");
-    warn((jsonString + "\n").c_str());
+    warn((std::string(jsonString) + "\n").c_str());
     log.is_vaild = false;
     return log;
   }
@@ -100,7 +101,6 @@ Log parse(std::string jsonString) {
   set_json_field_value(json, "SeverityNumber", INTEGER, &log);
   set_json_field_value(json, "ServiceName", STRING, &log);
   set_json_field_value(json, "Body", STRING, &log);
-
 
   cJSON *resourceAttributes =
       cJSON_GetObjectItemCaseSensitive(json, "ResourceAttributes");
@@ -144,4 +144,4 @@ Log parse(std::string jsonString) {
   return log;
 }
 
-Log Serializer::serialize(std::string source) { return parse(source); }
+Log Serializer::serialize(char *source) { return parse(source); }
