@@ -4,83 +4,7 @@
 #include "param.h"
 #include <string>
 
-enum Field {
-  TIMESTAMP,
-  TRACE_ID,
-  SPAN_ID,
-  TRACE_FLAGS,
-  SEVERITY_TEXT,
-  SEVERITY_NUMBER,
-  SERVICE_NAME,
-  BODY,
-};
-enum DataKind { INTEGER, STRING };
-
-static inline Field get_field(std::string database_kind_string) {
-  static const std::unordered_map<std::string, Field> field_map = {
-      {"Timestamp", TIMESTAMP},
-      {"TraceId", TRACE_ID},
-      {"SpanId", SPAN_ID},
-      {"TraceFlags", TRACE_FLAGS},
-      {"SeverityText", SEVERITY_TEXT},
-      {"SeverityNumber", SEVERITY_NUMBER},
-      {"ServiceName", SERVICE_NAME},
-      {"Body", BODY},
-  };
-
-  auto item = field_map.find(database_kind_string);
-  if (item == field_map.end()) {
-    error("evenscribe(config): invalid string for databse_kind");
-  }
-  return item->second;
-}
-
-static void set_json_field_value(cJSON *json, std::string field,
-                                 DataKind data_kind, Log *log) {
-  cJSON *field_value = cJSON_GetObjectItemCaseSensitive(json, field.c_str());
-  switch (data_kind) {
-  case STRING: {
-    std::string error_msg = "evenscribe(log): " + std::string(field) +
-                            " is missing or not a string\n";
-    if (!cJSON_IsString(field_value) || field_value->valuestring == nullptr) {
-      warn(error_msg.c_str());
-      log->is_vaild = false;
-    } else {
-      // clang-format off
-      switch (get_field(field)) {
-      case TRACE_ID: { log->TraceId = field_value->valuestring; break; }
-      case SPAN_ID: { log->SpanId = field_value->valuestring; break; }
-      case SEVERITY_TEXT: { log->SeverityText = field_value->valuestring; break; }
-      case SERVICE_NAME: { log->ServiceName = field_value->valuestring; break; }
-      case BODY: { log->Body = field_value->valuestring; break; }
-      default: break;
-      }
-      // clang-format on
-    }
-    break;
-  }
-  case INTEGER: {
-    std::string error_msg = "evenscribe(log): " + std::string(field) +
-                            " is missing or not a number\n";
-    if (!cJSON_IsNumber(field_value)) {
-      warn(error_msg.c_str());
-      log->is_vaild = false;
-    } else {
-      // clang-format off
-      switch (get_field(field)) {
-      case TIMESTAMP: { log->Timestamp = field_value->valuedouble; break; }
-      case TRACE_FLAGS: { log->TraceFlags = field_value->valuedouble; break; }
-      case SEVERITY_NUMBER: { log->SeverityNumber = field_value->valuedouble; break; }
-      default: break;
-      }
-      // clang-format on
-      break;
-    }
-  }
-  }
-}
-
-Log parse(char *json_string)  {
+Log parse(char *json_string) {
   Log log;
   cJSON *json = cJSON_ParseWithLength(json_string, BUFFER_SIZE);
 
@@ -90,17 +14,83 @@ Log parse(char *json_string)  {
     warn("evenscribe(log): invalid json received\n");
     warn((std::string(json_string) + "\n").c_str());
     log.is_vaild = false;
+    cJSON_Delete(json);
     return log;
   }
 
-  set_json_field_value(json, "Timestamp", INTEGER, &log);
-  set_json_field_value(json, "TraceId", STRING, &log);
-  set_json_field_value(json, "SpanId", STRING, &log);
-  set_json_field_value(json, "TraceFlags", INTEGER, &log);
-  set_json_field_value(json, "SeverityText", STRING, &log);
-  set_json_field_value(json, "SeverityNumber", INTEGER, &log);
-  set_json_field_value(json, "ServiceName", STRING, &log);
-  set_json_field_value(json, "Body", STRING, &log);
+  cJSON *timestamp = cJSON_GetObjectItemCaseSensitive(json, "Timestamp");
+  if (!cJSON_IsNumber(timestamp)) {
+    warn("evenscribe(log): Timestamp is either missing or not an integer\n");
+    log.is_vaild = false;
+    cJSON_Delete(json);
+    return log;
+  };
+  log.Timestamp = timestamp->valuedouble;
+
+  cJSON *trace_id = cJSON_GetObjectItemCaseSensitive(json, "TraceId");
+  if (!cJSON_IsString(trace_id) || trace_id->valuestring == nullptr) {
+    warn("evenscribe(log): TraceId is either missing or not a string\n");
+    log.is_vaild = false;
+    cJSON_Delete(json);
+    return log;
+  };
+  log.TraceId = trace_id->valuestring;
+
+  cJSON *span_id = cJSON_GetObjectItemCaseSensitive(json, "SpanId");
+  if (!cJSON_IsString(span_id) || trace_id->valuestring == nullptr) {
+    warn("evenscribe(log): SpanId is either missing or not a string\n");
+    log.is_vaild = false;
+    cJSON_Delete(json);
+    return log;
+  };
+  log.TraceId = span_id->valuestring;
+
+  cJSON *trace_flags = cJSON_GetObjectItemCaseSensitive(json, "TraceFlags");
+  if (!cJSON_IsNumber(trace_flags)) {
+    warn("evenscribe(log): TraceFlags is either missing or not an integer\n");
+    log.is_vaild = false;
+    cJSON_Delete(json);
+    return log;
+  };
+  log.TraceFlags = trace_flags->valuedouble;
+
+  cJSON *severity_text = cJSON_GetObjectItemCaseSensitive(json, "SeverityText");
+  if (!cJSON_IsString(severity_text) || trace_id->valuestring == nullptr) {
+    warn("evenscribe(log): SeverityText is either missing or not a string\n");
+    log.is_vaild = false;
+    cJSON_Delete(json);
+    return log;
+  };
+  log.SeverityText = severity_text->valuestring;
+
+  cJSON *severity_number =
+      cJSON_GetObjectItemCaseSensitive(json, "SeverityNumber");
+  if (!cJSON_IsNumber(severity_number)) {
+    warn("evenscribe(log): SeverityNumber is either missing or not an "
+         "integer\n");
+    log.is_vaild = false;
+    cJSON_Delete(json);
+    return log;
+  };
+  log.SeverityNumber = severity_number->valuedouble;
+
+  cJSON *service_name = cJSON_GetObjectItemCaseSensitive(json, "ServiceName");
+  if (!cJSON_IsString(service_name) || trace_id->valuestring == nullptr) {
+    warn("evenscribe(log): ServiceName is either missing or not a string\n");
+    log.is_vaild = false;
+    cJSON_Delete(json);
+    return log;
+  };
+  log.ServiceName = service_name->valuestring;
+
+  cJSON *body = cJSON_GetObjectItemCaseSensitive(json, "Body");
+  if (!cJSON_IsString(body) || trace_id->valuestring == nullptr) {
+    warn("evenscribe(log): Body is either missing or not a string\n");
+    log.is_vaild = false;
+    cJSON_Delete(json);
+    return log;
+  };
+  log.Body = body->valuestring;
 
   cJSON *resource_attributes =
       cJSON_GetObjectItemCaseSensitive(json, "ResourceAttributes");
@@ -108,6 +98,7 @@ Log parse(char *json_string)  {
     warn("evenscribe(log): ResourceAttributes is either missing or not an "
          "object\n");
     log.is_vaild = false;
+    cJSON_Delete(json);
     return log;
   }
   cJSON *attribute = nullptr;
@@ -116,6 +107,7 @@ Log parse(char *json_string)  {
       warn("evenscribe(log): resource attribute key-value"
            " is or not a string\n");
       log.is_vaild = false;
+      cJSON_Delete(json);
       return log;
     }
     log.ResourceAttributes[attribute->string] = attribute->valuestring;
@@ -127,6 +119,7 @@ Log parse(char *json_string)  {
     warn("evenscribe(log): LogAttributes is either missing or not an "
          "object\n");
     log.is_vaild = false;
+    cJSON_Delete(json);
     return log;
   }
   attribute = nullptr;
@@ -134,6 +127,7 @@ Log parse(char *json_string)  {
     if (!cJSON_IsString(attribute) || attribute->valuestring == nullptr) {
       warn("evenscribe(log): Log attribute key-value is not a string\n");
       log.is_vaild = false;
+      cJSON_Delete(json);
       return log;
     }
     log.LogAttributes[attribute->string] = attribute->valuestring;
