@@ -4,27 +4,24 @@
 #include "tao/pq/connection.hpp"
 #include <cstdlib>
 #include <cstring>
-#include <queue>
+#include <deque>
 #include <string>
 #include <unistd.h>
 
 extern pthread_t conn_threads[CONN_THREADS];
-extern std::queue<connection_t *> conn_queue;
+extern std::deque<connection_t *> conn_queue;
 extern pthread_mutex_t conn_mtx;
 extern pthread_cond_t conn_cond_var;
-extern bool conn_done;
 
-extern std::queue<char *> read_queue;
+extern std::deque<char *> read_queue;
 extern pthread_t read_threads[READ_THREADS];
 extern pthread_mutex_t read_mtx;
 extern pthread_cond_t read_cond_var;
-extern bool read_done;
 
-extern std::vector<std::tuple<std::string, time_t>> insert_statements;
+extern std::deque<std::string> insert_statements;
 extern pthread_t write_threads[WRITE_THREADS];
 extern pthread_mutex_t write_mtx;
 extern pthread_cond_t write_cond_var;
-extern bool write_done;
 
 PostgresQueryGenerator postgres_query_generator;
 std::shared_ptr<tao::pq::connection> *db_postgres =
@@ -34,22 +31,18 @@ std::shared_ptr<tao::pq::connection> *db_postgres =
 void *conn_worker_postgres(void *arg) {
   while (true) {
     pthread_mutex_lock(&conn_mtx);
-    while (conn_queue.empty() && !conn_done) {
+    while (conn_queue.empty()) {
       pthread_cond_wait(&conn_cond_var, &conn_mtx);
-    }
-    if (conn_done && conn_queue.empty()) {
-      pthread_mutex_unlock(&conn_mtx);
-      break;
     }
 
     connection_t *conn = conn_queue.front();
-    conn_queue.pop();
+    conn_queue.pop_front();
     pthread_mutex_unlock(&conn_mtx);
 
     char buf[BUFFER_SIZE];
     while (read(conn->client_socket, buf, BUFFER_SIZE) > 0) {
       pthread_mutex_lock(&read_mtx);
-      read_queue.push(buf);
+      read_queue.push_front(buf);
       pthread_cond_broadcast(&read_cond_var);
       pthread_mutex_unlock(&read_mtx);
     }
@@ -64,23 +57,19 @@ void *conn_worker_postgres(void *arg) {
 void *read_worker_postgres(void *arg) {
   while (true) {
     pthread_mutex_lock(&read_mtx);
-    while (read_queue.empty() && !read_done) {
+    while (read_queue.empty()) {
       pthread_cond_wait(&read_cond_var, &read_mtx);
-    }
-    if (read_done && read_queue.empty()) {
-      pthread_mutex_unlock(&read_mtx);
-      break;
     }
 
     char *buf = read_queue.front();
-    read_queue.pop();
+    read_queue.pop_front();
     pthread_mutex_unlock(&read_mtx);
 
     Log entry = Serializer::serialize(buf);
     if (entry.is_vaild) {
       std::string query = postgres_query_generator.create_subquery(entry);
       pthread_mutex_lock(&write_mtx);
-      insert_statements.push_back(std::make_tuple(query, time(NULL)));
+      insert_statements.push_front(query);
       pthread_cond_broadcast(&write_cond_var);
       pthread_mutex_unlock(&write_mtx);
     }
@@ -95,22 +84,20 @@ void *write_worker_postgres(void *arg) {
     int index = *((int *)arg);
 
     pthread_mutex_lock(&write_mtx);
-    while (insert_statements.size() < SAVE_THRESHOLD && !write_done) {
+    while (insert_statements.size() < SAVE_THRESHOLD) {
       pthread_cond_wait(&write_cond_var, &write_mtx);
     }
 
-    if (write_done && insert_statements.size() < SAVE_THRESHOLD) {
-      pthread_mutex_unlock(&write_mtx);
-      break;
+    std::vector<std::string> bucket;
+    bucket.reserve(SAVE_THRESHOLD);
+    while (!insert_statements.empty()) {
+      bucket.push_back(insert_statements.front());
+      insert_statements.pop_front();
     }
 
-    std::vector<std::tuple<std::string, time_t>> thread_copy(
-        insert_statements.begin(), insert_statements.end());
-    insert_statements.clear();
     pthread_mutex_unlock(&write_mtx);
 
-    std::string query_string =
-        postgres_query_generator.create_query(thread_copy);
+    std::string query_string = postgres_query_generator.create_query(bucket);
     db_postgres[index]->execute(query_string);
     info("Save success.\n");
   }

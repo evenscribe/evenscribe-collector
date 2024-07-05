@@ -1,4 +1,4 @@
-#define BUFFER_SIZE 2000
+#define BUFFER_SIZE 1000
 #define MAXIMUM_CONNECTIONS 5
 #define CONFIG_PATH "/.evenscriberc"
 #define SOCKET_PATH "/tmp/olympus_socket.sock"

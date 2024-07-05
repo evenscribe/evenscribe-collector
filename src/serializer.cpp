@@ -80,15 +80,15 @@ static void set_json_field_value(cJSON *json, std::string field,
   }
 }
 
-Log parse(char *jsonString)  {
+Log parse(char *json_string)  {
   Log log;
-  cJSON *json = cJSON_ParseWithLength(jsonString, BUFFER_SIZE);
+  cJSON *json = cJSON_ParseWithLength(json_string, BUFFER_SIZE);
 
   log.is_vaild = true;
 
   if (json == nullptr) {
     warn("evenscribe(log): invalid json received\n");
-    warn((std::string(jsonString) + "\n").c_str());
+    warn((std::string(json_string) + "\n").c_str());
     log.is_vaild = false;
     return log;
   }
@@ -102,16 +102,16 @@ Log parse(char *jsonString)  {
   set_json_field_value(json, "ServiceName", STRING, &log);
   set_json_field_value(json, "Body", STRING, &log);
 
-  cJSON *resourceAttributes =
+  cJSON *resource_attributes =
       cJSON_GetObjectItemCaseSensitive(json, "ResourceAttributes");
-  if (!cJSON_IsObject(resourceAttributes)) {
+  if (!cJSON_IsObject(resource_attributes)) {
     warn("evenscribe(log): ResourceAttributes is either missing or not an "
          "object\n");
     log.is_vaild = false;
     return log;
   }
   cJSON *attribute = nullptr;
-  cJSON_ArrayForEach(attribute, resourceAttributes) {
+  cJSON_ArrayForEach(attribute, resource_attributes) {
     if (!cJSON_IsString(attribute) || attribute->valuestring == nullptr) {
       warn("evenscribe(log): resource attribute key-value"
            " is or not a string\n");
@@ -121,16 +121,16 @@ Log parse(char *jsonString)  {
     log.ResourceAttributes[attribute->string] = attribute->valuestring;
   }
 
-  cJSON *logAttributes =
+  cJSON *log_attributes =
       cJSON_GetObjectItemCaseSensitive(json, "LogAttributes");
-  if (!cJSON_IsObject(logAttributes)) {
+  if (!cJSON_IsObject(log_attributes)) {
     warn("evenscribe(log): LogAttributes is either missing or not an "
          "object\n");
     log.is_vaild = false;
     return log;
   }
   attribute = nullptr;
-  cJSON_ArrayForEach(attribute, logAttributes) {
+  cJSON_ArrayForEach(attribute, log_attributes) {
     if (!cJSON_IsString(attribute) || attribute->valuestring == nullptr) {
       warn("evenscribe(log): Log attribute key-value is not a string\n");
       log.is_vaild = false;

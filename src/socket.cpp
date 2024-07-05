@@ -6,36 +6,31 @@
 #include <cstdlib>
 #include <cstring>
 #include <ctime>
-#include <queue>
-#include <string.h>
+#include <deque>
 #include <string>
 #include <sys/fcntl.h>
 #include <sys/socket.h>
 #include <unistd.h>
-#include <vector>
 
 //
-std::queue<connection_t *> conn_queue;
+std::deque<connection_t *> conn_queue;
 pthread_t conn_threads[CONN_THREADS];
 pthread_mutex_t conn_mtx = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t conn_cond_var = PTHREAD_COND_INITIALIZER;
-bool conn_done = false;
 //
 
 //
-std::queue<char *> read_queue;
+std::deque<char *> read_queue;
 pthread_t read_threads[READ_THREADS];
 pthread_mutex_t read_mtx = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t read_cond_var = PTHREAD_COND_INITIALIZER;
-bool read_done = false;
 //
 
 //
-std::vector<std::tuple<std::string, time_t>> insert_statements;
+std::deque<std::string> insert_statements;
 pthread_t write_threads[WRITE_THREADS];
 pthread_mutex_t write_mtx = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t write_cond_var = PTHREAD_COND_INITIALIZER;
-bool write_done = false;
 //
 
 void Socket::_sanitize() {
@@ -84,7 +79,6 @@ Socket::Socket(Config config) {
 Socket::~Socket() {
   {
     pthread_mutex_lock(&conn_mtx);
-    conn_done = true;
     pthread_cond_broadcast(&conn_cond_var);
     pthread_mutex_unlock(&conn_mtx);
   }
@@ -115,7 +109,7 @@ void Socket::handle_message() {
     connection_t *conn = new connection_t{client_socket};
 
     pthread_mutex_lock(&conn_mtx);
-    conn_queue.push(conn);
+    conn_queue.push_front(conn);
     pthread_cond_broadcast(&conn_cond_var);
     pthread_mutex_unlock(&conn_mtx);
   }

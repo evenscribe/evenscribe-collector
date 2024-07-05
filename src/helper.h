@@ -56,7 +56,7 @@ static inline std::string between(const std::string &start,
   return start + std::to_string(number) + end;
 }
 
-static inline std::string commaSeparate(const std::vector<std::string> &arr) {
+static inline std::string commaSeparate(std::vector<std::string> &arr) {
   std::ostringstream oss;
   if (!arr.empty()) {
     oss << arr[0];
@@ -65,19 +65,6 @@ static inline std::string commaSeparate(const std::vector<std::string> &arr) {
     }
   }
   return oss.str();
-}
-
-static inline std::string
-get_query_from_bucket(std::vector<std::tuple<std::string, time_t>> bucket) {
-  std::vector<std::string> query_strings;
-  query_strings.reserve(bucket.size());
-  for (const auto &t : bucket) {
-    query_strings.push_back(std::get<0>(t));
-  }
-  std::ostringstream query_string;
-  query_string << between("INSERT INTO ", TABLE_NAME, " VALUES ")
-               << commaSeparate(query_strings) << ";";
-  return query_string.str();
 }
 
 static bool is_socket_open(int sockfd) {
