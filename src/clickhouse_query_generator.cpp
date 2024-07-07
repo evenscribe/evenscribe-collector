@@ -27,32 +27,27 @@ public:
     return oss.str();
   }
 
-  static std::string
-  create_query(std::vector<std::tuple<std::string, time_t>> bucket) {
-    std::vector<std::string> query_strings;
-    query_strings.reserve(bucket.size());
-    for (const auto &t : bucket) {
-      query_strings.push_back(std::get<0>(t));
-    }
+  static std::string create_query(std::deque<std::string> bucket) {
     std::ostringstream query_string;
     query_string << between("INSERT INTO ", TABLE_NAME, " VALUES ")
-                 << commaSeparate(query_strings) << ";";
+                 << commaSeparate(bucket) << ";";
     return query_string.str();
   }
 
   std::string getValues(const Log &entry) const {
-    // clang-format off
-    return commaSeparate({
-          std::to_string(entry.Timestamp),
-          wrap(entry.TraceId, "'"),
-          wrap(entry.SpanId, "'"),
-          std::to_string(entry.TraceFlags),
-          wrap(entry.SeverityText, "'"),
-          std::to_string(entry.SeverityNumber),
-          wrap(entry.ServiceName, "'"),
-          wrap(entry.Body, "'"),
-          unorderedMapToString(entry.ResourceAttributes),
-          unorderedMapToString(entry.LogAttributes),
-      });
-    }
+    std::deque<std::string> bucket = {
+        std::to_string(entry.Timestamp),
+        wrap(entry.TraceId, "'"),
+        wrap(entry.SpanId, "'"),
+        std::to_string(entry.TraceFlags),
+        wrap(entry.SeverityText, "'"),
+        std::to_string(entry.SeverityNumber),
+        wrap(entry.ServiceName, "'"),
+        wrap(entry.Body, "'"),
+        unorderedMapToString(entry.ResourceAttributes),
+        unorderedMapToString(entry.LogAttributes),
+    };
+
+    return commaSeparate(bucket);
+  }
 };

@@ -10,7 +10,6 @@
 #include <string>
 #include <sys/socket.h>
 #include <sys/stat.h>
-#include <vector>
 
 typedef struct {
   int client_socket;

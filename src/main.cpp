@@ -1,8 +1,11 @@
 #include "config.h"
 #include "helper.h"
 #include "log.h"
-#include "service.h"
 #include "socket.h"
+
+#ifdef __APPLE__
+#include "service.h"
+#endif
 
 #define SERVICE_START_OPT "--start-service"
 #define SERVICE_STOP_OPT "--stop-service"
@@ -19,9 +22,13 @@ static void parse_arguments(int argc, char **argv) {
 
 int main(int argc, char **argv) {
   Config config = config_to_tuple();
+
+#ifdef __APPLE__
   if (argc > 1) {
     parse_arguments(argc, argv);
   }
+#endif
+
   Socket socket = Socket(config);
   socket.handle_message();
   return 0;
