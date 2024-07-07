@@ -1,7 +1,7 @@
 #include "socket.h"
 #include "log.h"
 #include "param.h"
-// #include "run_clickhouse.cpp"
+#include "run_clickhouse.cpp"
 #include "run_postgres.cpp"
 #include <cstdlib>
 #include <cstring>
@@ -70,7 +70,7 @@ Socket::Socket(Config config) {
     break;
   }
   case CLICKHOUSE: {
-    // run_clickhouse(this->config);
+    run_clickhouse(this->config);
     break;
   }
   }
