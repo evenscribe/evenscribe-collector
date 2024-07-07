@@ -1,12 +1,13 @@
 #include "helper.h"
 #include "serializer.h"
+#include <deque>
 #include <string>
 
 class PostgresQueryGenerator {
 public:
   PostgresQueryGenerator() {}
 
-  std::string create_subquery(Log &log) {
+  std::string inline create_subquery(Log &log) {
     std::stringstream str;
     str << between("(", getValues(log), ")");
     return str.str();
@@ -27,15 +28,15 @@ public:
     return oss.str();
   }
 
-  static std::string create_query(std::vector<std::string> bucket) {
+  static inline std::string create_query(std::deque<std::string> bucket) {
     std::ostringstream query_string;
     query_string << between("INSERT INTO ", TABLE_NAME, " VALUES ")
                  << commaSeparate(bucket) << ";";
     return query_string.str();
   }
 
-  std::string getValues(const Log &entry) const {
-    std::vector<std::string> bucket = {
+  std::string inline getValues(const Log &entry) const {
+    std::deque<std::string> bucket = {
         std::to_string(entry.Timestamp),
         wrap(entry.TraceId, "'"),
         wrap(entry.SpanId, "'"),

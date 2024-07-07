@@ -88,8 +88,7 @@ void *write_worker_postgres(void *arg) {
       pthread_cond_wait(&write_cond_var, &write_mtx);
     }
 
-    std::vector<std::string> bucket;
-    bucket.reserve(SAVE_THRESHOLD);
+    std::deque<std::string> bucket;
     while (!insert_statements.empty()) {
       bucket.push_back(insert_statements.front());
       insert_statements.pop_front();
