@@ -119,8 +119,6 @@ void run_clickhouse(Config config) {
   }
 
   for (int i = 0; i < WRITE_THREADS; ++i) {
-    int *a = (int *)malloc(sizeof(int));
-    *a = i;
     // FIXME: this shit right here throws error
     // but cannot be caught for some reason
     // doesn't even print a debug message
@@ -128,10 +126,12 @@ void run_clickhouse(Config config) {
         clickhouse::ClientOptions()
             .SetHost(config.host)
             .SetPort(config.port)
-            // .SetUser(config.user)
-            // .SetPassword(config.password)
-            // .SetSSLOptions(clickhouse::ClientOptions::SSLOptions())
-            );
+            .SetUser(config.user)
+            .SetPassword(config.password)
+            .SetSSLOptions(clickhouse::ClientOptions::SSLOptions()));
+
+    int *a = (int *)malloc(sizeof(int));
+    *a = i;
     if (pthread_create(&write_threads[i], nullptr, *write_worker_clickhouse,
                        a) != 0) {
       error("create thread failed");

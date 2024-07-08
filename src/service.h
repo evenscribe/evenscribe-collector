@@ -1,3 +1,4 @@
+#ifdef __APPLE__
 #ifndef SERVICE_H
 #define SERVICE_H
 
@@ -294,4 +295,5 @@ static int service_stop(void) {
   }
 }
 
+#endif
 #endif

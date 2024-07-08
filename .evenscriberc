@@ -1,0 +1,8 @@
+{
+    "host": "tgn2urxfn9.us-east-2.aws.clickhouse.cloud",
+    "port": 9440,
+    "user": "default",
+    "password": "gZ_m_0~ZCKgKT",
+    "dbname" : "default",
+    "database_kind": "clickhouse"
+}

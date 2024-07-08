@@ -5,7 +5,6 @@
 
 #ifdef __APPLE__
 #include "service.h"
-#endif
 
 #define SERVICE_START_OPT "--start-service"
 #define SERVICE_STOP_OPT "--stop-service"
@@ -19,15 +18,16 @@ static void parse_arguments(int argc, char **argv) {
   }
   error("evenscribe(command): invalid argument passed");
 }
+#endif
 
 int main(int argc, char **argv) {
-  Config config = config_to_tuple();
 
 #ifdef __APPLE__
   if (argc > 1) {
     parse_arguments(argc, argv);
   }
 #endif
+  Config config = config_to_tuple();
 
   Socket socket = Socket(config);
   socket.handle_message();
