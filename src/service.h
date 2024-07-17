@@ -1,4 +1,4 @@
-#ifdef __APPLE__
+#if defined(__APPLE__) && defined(__MACH__)
 #ifndef SERVICE_H
 #define SERVICE_H
 

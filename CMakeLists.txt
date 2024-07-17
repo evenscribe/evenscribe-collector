@@ -1,7 +1,6 @@
 cmake_minimum_required(VERSION 3.5)
 project(OlympusObservatory)
 
-set(WITH_OPENSSL ON)
 set(CMAKE_CXX_STANDARD 17)
 
 # add_compile_options(-O3 -march=native -mtune=native)
@@ -27,6 +26,8 @@ set(HEADERS
     src/serializer.h
     src/socket.h
 )
+
+set(WITH_OPENSSL ON)
 
 add_executable(${PROJECT_NAME} ${SOURCES})
 

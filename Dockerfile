@@ -16,4 +16,5 @@ COPY ./.evenscriberc /root/.evenscriberc
 WORKDIR /app
 COPY . .
 
-RUN cmake -DWITH_OPENSSL=ON -DPostgreSQL_TYPE_INCLUDE_DIR=/usr/include/postgresql/ -B build -S . &&  cmake --build build
+RUN cmake -DWITH_OPENSSL=ON -DPostgreSQL_TYPE_INCLUDE_DIR=/usr/include/postgresql/ -B build -S .
+RUN cmake --build build -j$(nproc)

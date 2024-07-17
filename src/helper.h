@@ -1,6 +1,7 @@
 #ifndef HELPER
 #define HELPER
 
+#include "log.h"
 #include "param.h"
 #include <cstdlib>
 #include <cstring>
@@ -157,6 +158,56 @@ static inline std::string commaSeparate(std::deque<std::string> &arr) {
     }
   }
   return oss.str();
+}
+
+static int create_directory(const char *path) {
+  struct stat st = {0};
+
+  // Check if the directory exists
+  if (stat(path, &st) == -1) {
+    // Create the directory
+    if (mkdir(path, 0755) != 0) {
+      perror("mkdir");
+      return -1;
+    }
+  }
+  return 0;
+}
+
+static int create_path_if_not_exists(const char *path) {
+  char tmp[256];
+  char *p = NULL;
+  size_t len;
+
+  snprintf(tmp, sizeof(tmp), "%s", path);
+  len = strlen(tmp);
+  if (tmp[len - 1] == '/') {
+    tmp[len - 1] = 0;
+  }
+  for (p = tmp + 1; *p; p++) {
+    if (*p == '/') {
+      *p = 0;
+      if (create_directory(tmp) != 0) {
+        return -1;
+      }
+      *p = '/';
+    }
+  }
+  return create_directory(tmp);
+}
+
+static void create_service_path_linux() {
+  char *home = getenv("HOME");
+  if (!home) {
+    error("evenscribe: 'env HOME' not set! abort..\n");
+  }
+
+  char path[256];
+  snprintf(path, sizeof(path), "%s/.config/systemd/user/", home);
+
+  if (create_path_if_not_exists(path) != 0) {
+    error("evenscribe: could not create path %s! abort..\n", path);
+  }
 }
 
 static bool is_socket_open(int sockfd) {
