@@ -1,6 +1,6 @@
 #if defined(__APPLE__) && defined(__MACH__)
-#ifndef SERVICE_H
-#define SERVICE_H
+#ifndef SERVICE_MAC
+#define SERVICE_MAC
 
 #include "helper.h"
 #include "log.h"

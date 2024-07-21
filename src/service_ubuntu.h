@@ -33,6 +33,20 @@
   "[Install]\n"                                                                \
   "WantedBy=multi-user.target\n"
 
+static void create_service_path_linux() {
+  char *home = getenv("HOME");
+  if (!home) {
+    error("evenscribe: 'env HOME' not set! abort..\n");
+  }
+
+  char path[256];
+  snprintf(path, sizeof(path), "%s/.config/systemd/user/", home);
+
+  if (create_path_if_not_exists(path) != 0) {
+    error("evenscribe: could not create path %s! abort..\n", path);
+  }
+}
+
 static int safe_exec(char *const argv[], bool suppress_output) {
   pid_t pid;
   posix_spawn_file_actions_t actions;
@@ -121,6 +135,8 @@ static int service_install_internal() {
 }
 
 static int service_start(void) {
+  create_service_path_linux();
+
   char *home = getenv("HOME");
   if (!home) {
     error("evenscribe: 'env HOME' not set! abort..\n");

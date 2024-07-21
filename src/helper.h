@@ -196,20 +196,6 @@ static int create_path_if_not_exists(const char *path) {
   return create_directory(tmp);
 }
 
-static void create_service_path_linux() {
-  char *home = getenv("HOME");
-  if (!home) {
-    error("evenscribe: 'env HOME' not set! abort..\n");
-  }
-
-  char path[256];
-  snprintf(path, sizeof(path), "%s/.config/systemd/user/", home);
-
-  if (create_path_if_not_exists(path) != 0) {
-    error("evenscribe: could not create path %s! abort..\n", path);
-  }
-}
-
 static bool is_socket_open(int sockfd) {
   char buffer;
   ssize_t result = recv(sockfd, &buffer, 1, MSG_PEEK);
