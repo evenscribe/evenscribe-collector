@@ -12,26 +12,22 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-//
 std::deque<connection_t *> conn_queue;
 pthread_t conn_threads[CONN_THREADS];
 pthread_mutex_t conn_mtx = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t conn_cond_var = PTHREAD_COND_INITIALIZER;
-//
 
-//
 std::deque<char *> read_queue;
 pthread_t read_threads[READ_THREADS];
 pthread_mutex_t read_mtx = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t read_cond_var = PTHREAD_COND_INITIALIZER;
-//
 
-//
 std::deque<std::string> insert_statements;
 pthread_t write_threads[WRITE_THREADS];
 pthread_mutex_t write_mtx = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t write_cond_var = PTHREAD_COND_INITIALIZER;
-//
+
+pthread_t sync_thread;
 
 void Socket::_sanitize() {
   remove(SOCKET_PATH);

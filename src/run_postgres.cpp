@@ -5,6 +5,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <deque>
+#include <pthread.h>
 #include <string>
 #include <unistd.h>
 
@@ -22,6 +23,8 @@ extern std::deque<std::string> insert_statements;
 extern pthread_t write_threads[WRITE_THREADS];
 extern pthread_mutex_t write_mtx;
 extern pthread_cond_t write_cond_var;
+
+extern pthread_t sync_thread;
 
 PostgresQueryGenerator postgres_query_generator;
 std::shared_ptr<tao::pq::connection> *db_postgres =
@@ -105,6 +108,31 @@ void *write_worker_postgres(void *arg) {
   pthread_exit(nullptr);
 }
 
+void *sync_worker_postgres(void *arg) {
+  while (true) {
+    sleep(TIME_TO_SAVE);
+
+    pthread_mutex_lock(&write_mtx);
+
+    if (insert_statements.size() == 0) {
+      pthread_mutex_unlock(&write_mtx);
+      continue;
+    }
+
+    std::deque<std::string> bucket;
+    while (!insert_statements.empty()) {
+      bucket.push_back(insert_statements.front());
+      insert_statements.pop_front();
+    }
+
+    pthread_mutex_unlock(&write_mtx);
+
+    std::string query_string = postgres_query_generator.create_query(bucket);
+    db_postgres[0]->execute(query_string);
+    info("Save success.\n");
+  }
+}
+
 void run_postgres(Config config) {
   std::string db_connection_url =
       "postgres://" + config.user + ":" + config.password + "@" + config.host +
@@ -136,4 +164,8 @@ void run_postgres(Config config) {
       error("create thread failed");
     }
   }
+
+  if (pthread_create(&sync_thread, NULL, *sync_worker_postgres, NULL) != 0) {
+    error("create thread failed");
+  };
 }

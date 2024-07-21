@@ -7,3 +7,4 @@
 #define READ_THREADS 4
 #define WRITE_THREADS 4
 #define SAVE_THRESHOLD 1000
+#define TIME_TO_SAVE 10
