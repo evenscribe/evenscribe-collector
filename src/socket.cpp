@@ -1,33 +1,9 @@
 #include "socket.h"
-#include "log.h"
-#include "param.h"
-#include "run_clickhouse.cpp"
-#include "run_postgres.cpp"
-#include <cstdlib>
-#include <cstring>
-#include <ctime>
-#include <deque>
-#include <string>
-#include <sys/fcntl.h>
-#include <sys/socket.h>
-#include <unistd.h>
 
 std::deque<connection_t *> conn_queue;
 pthread_t conn_threads[CONN_THREADS];
 pthread_mutex_t conn_mtx = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t conn_cond_var = PTHREAD_COND_INITIALIZER;
-
-std::deque<char *> read_queue;
-pthread_t read_threads[READ_THREADS];
-pthread_mutex_t read_mtx = PTHREAD_MUTEX_INITIALIZER;
-pthread_cond_t read_cond_var = PTHREAD_COND_INITIALIZER;
-
-std::deque<std::string> insert_statements;
-pthread_t write_threads[WRITE_THREADS];
-pthread_mutex_t write_mtx = PTHREAD_MUTEX_INITIALIZER;
-pthread_cond_t write_cond_var = PTHREAD_COND_INITIALIZER;
-
-pthread_t sync_thread;
 
 void Socket::_sanitize() {
   remove(SOCKET_PATH);
@@ -62,33 +38,14 @@ Socket::Socket(Config config) {
 
   switch (config.database_kind) {
   case POSTGRES: {
-    run_postgres(this->config);
+    Postgres::run(this->config);
     break;
   }
   case CLICKHOUSE: {
-    run_clickhouse(this->config);
+    Clickhouse::run(this->config);
     break;
   }
   }
-}
-
-Socket::~Socket() {
-  {
-    pthread_mutex_lock(&conn_mtx);
-    pthread_cond_broadcast(&conn_cond_var);
-    pthread_mutex_unlock(&conn_mtx);
-  }
-
-  for (int i = 0; i < CONN_THREADS; ++i) {
-    pthread_join(conn_threads[i], NULL);
-  }
-
-  for (int i = 0; i < WRITE_THREADS; ++i) {
-    pthread_join(write_threads[i], NULL);
-  }
-
-  close(server_socket);
-  remove(SOCKET_PATH);
 }
 
 void Socket::handle_message() {
