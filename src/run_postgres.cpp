@@ -1,37 +1,29 @@
-#include "config.h"
-#include "helper.h"
-#include "postgres_query_generator.cpp"
-#include "tao/pq/connection.hpp"
-#include <cstdlib>
-#include <cstring>
-#include <deque>
-#include <pthread.h>
-#include <string>
-#include <unistd.h>
+#include "run_postgres.h"
 
 extern pthread_t conn_threads[CONN_THREADS];
 extern std::deque<connection_t *> conn_queue;
 extern pthread_mutex_t conn_mtx;
 extern pthread_cond_t conn_cond_var;
 
-extern std::deque<char *> read_queue;
-extern pthread_t read_threads[READ_THREADS];
-extern pthread_mutex_t read_mtx;
-extern pthread_cond_t read_cond_var;
+namespace Postgres {
 
-extern std::deque<std::string> insert_statements;
-extern pthread_t write_threads[WRITE_THREADS];
-extern pthread_mutex_t write_mtx;
-extern pthread_cond_t write_cond_var;
+std::deque<char *> read_queue;
+pthread_t read_threads[READ_THREADS];
+pthread_mutex_t read_mtx;
+pthread_cond_t read_cond_var;
 
-extern pthread_t sync_thread;
+std::deque<std::string> insert_statements;
+pthread_t write_threads[WRITE_THREADS];
+pthread_mutex_t write_mtx;
+pthread_cond_t write_cond_var;
 
-PostgresQueryGenerator postgres_query_generator;
-std::shared_ptr<tao::pq::connection> *db_postgres =
+pthread_t sync_thread;
+
+std::shared_ptr<tao::pq::connection> *db =
     (std::shared_ptr<tao::pq::connection> *)malloc(
         sizeof(std::shared_ptr<tao::pq::connection>) * WRITE_THREADS);
 
-void *conn_worker_postgres(void *arg) {
+void *conn_worker(void *arg) {
   while (true) {
     pthread_mutex_lock(&conn_mtx);
     while (conn_queue.empty()) {
@@ -57,7 +49,7 @@ void *conn_worker_postgres(void *arg) {
   pthread_exit(nullptr);
 }
 
-void *read_worker_postgres(void *arg) {
+void *read_worker(void *arg) {
   while (true) {
     pthread_mutex_lock(&read_mtx);
     while (read_queue.empty()) {
@@ -70,7 +62,7 @@ void *read_worker_postgres(void *arg) {
 
     Log entry = Serializer::serialize(buf);
     if (entry.is_vaild) {
-      std::string query = postgres_query_generator.create_subquery(entry);
+      std::string query = PostgresQueryGenerator::create_subquery(entry);
       pthread_mutex_lock(&write_mtx);
       insert_statements.push_front(query);
       pthread_cond_broadcast(&write_cond_var);
@@ -82,7 +74,7 @@ void *read_worker_postgres(void *arg) {
   pthread_exit(nullptr);
 }
 
-void *write_worker_postgres(void *arg) {
+void *write_worker(void *arg) {
   while (true) {
     int index = *((int *)arg);
 
@@ -99,8 +91,8 @@ void *write_worker_postgres(void *arg) {
 
     pthread_mutex_unlock(&write_mtx);
 
-    std::string query_string = postgres_query_generator.create_query(bucket);
-    db_postgres[index]->execute(query_string);
+    std::string query_string = PostgresQueryGenerator::create_query(bucket);
+    db[index]->execute(query_string);
     info("Save success.\n");
   }
 
@@ -108,7 +100,7 @@ void *write_worker_postgres(void *arg) {
   pthread_exit(nullptr);
 }
 
-void *sync_worker_postgres(void *arg) {
+void *sync_worker(void *arg) {
   while (true) {
     sleep(TIME_TO_SAVE);
 
@@ -127,27 +119,25 @@ void *sync_worker_postgres(void *arg) {
 
     pthread_mutex_unlock(&write_mtx);
 
-    std::string query_string = postgres_query_generator.create_query(bucket);
-    db_postgres[0]->execute(query_string);
+    std::string query_string = PostgresQueryGenerator::create_query(bucket);
+    db[0]->execute(query_string);
     info("Save success.\n");
   }
 }
 
-void run_postgres(Config config) {
+void run(Config config) {
   std::string db_connection_url =
       "postgres://" + config.user + ":" + config.password + "@" + config.host +
       ":" + std::to_string(config.port) + "/" + config.dbname;
 
   for (int i = 0; i < CONN_THREADS; ++i) {
-    if (pthread_create(&conn_threads[i], NULL, *conn_worker_postgres, NULL) !=
-        0) {
+    if (pthread_create(&conn_threads[i], NULL, *conn_worker, NULL) != 0) {
       error("create thread failed");
     }
   }
 
   for (int i = 0; i < READ_THREADS; ++i) {
-    if (pthread_create(&read_threads[i], NULL, *read_worker_postgres, NULL) !=
-        0) {
+    if (pthread_create(&read_threads[i], NULL, *read_worker, NULL) != 0) {
       error("create thread failed");
     }
   }
@@ -158,14 +148,14 @@ void run_postgres(Config config) {
     // FIXME: try catch doesn't work here
     // I tried a bunch of stuff but nothing did
     // Just letting the app crash and print the error
-    db_postgres[i] = tao::pq::connection::create(db_connection_url);
-    if (pthread_create(&write_threads[i], NULL, *write_worker_postgres, a) !=
-        0) {
+    db[i] = tao::pq::connection::create(db_connection_url);
+    if (pthread_create(&write_threads[i], NULL, *write_worker, a) != 0) {
       error("create thread failed");
     }
   }
 
-  if (pthread_create(&sync_thread, NULL, *sync_worker_postgres, NULL) != 0) {
+  if (pthread_create(&sync_thread, NULL, *sync_worker, NULL) != 0) {
     error("create thread failed");
   };
 }
+} // namespace Postgres

@@ -1,34 +1,28 @@
-#include "clickhouse_query_generator.cpp"
-#include "config.h"
-#include "helper.h"
-#include "log.h"
-#include "param.h"
-#include <clickhouse/client.h>
-#include <deque>
-#include <unistd.h>
+#include "run_clickhouse.h"
 
 extern pthread_t conn_threads[CONN_THREADS];
 extern std::deque<connection_t *> conn_queue;
 extern pthread_mutex_t conn_mtx;
 extern pthread_cond_t conn_cond_var;
 
-extern std::deque<char *> read_queue;
-extern pthread_t read_threads[READ_THREADS];
-extern pthread_mutex_t read_mtx;
-extern pthread_cond_t read_cond_var;
+namespace Clickhouse {
 
-extern std::deque<std::string> insert_statements;
-extern pthread_t write_threads[WRITE_THREADS];
-extern pthread_mutex_t write_mtx;
-extern pthread_cond_t write_cond_var;
+std::deque<char *> read_queue;
+pthread_t read_threads[READ_THREADS];
+pthread_mutex_t read_mtx;
+pthread_cond_t read_cond_var;
 
-extern pthread_t sync_thread;
+std::deque<std::string> insert_statements;
+pthread_t write_threads[WRITE_THREADS];
+pthread_mutex_t write_mtx;
+pthread_cond_t write_cond_var;
 
-ClickhouseQueryGenerator clickhouse_query_generator;
-clickhouse::Client *db_clickhouse =
+pthread_t sync_thread;
+
+clickhouse::Client *db =
     (clickhouse::Client *)malloc(sizeof(clickhouse::Client) * WRITE_THREADS);
 
-void *conn_worker_clickhouse(void *arg) {
+void *conn_worker(void *arg) {
   while (true) {
     pthread_mutex_lock(&conn_mtx);
     while (conn_queue.empty()) {
@@ -54,7 +48,7 @@ void *conn_worker_clickhouse(void *arg) {
   pthread_exit(nullptr);
 }
 
-void *read_worker_clickhouse(void *arg) {
+void *read_worker(void *arg) {
   while (true) {
     pthread_mutex_lock(&read_mtx);
     while (read_queue.empty()) {
@@ -67,7 +61,7 @@ void *read_worker_clickhouse(void *arg) {
 
     Log entry = Serializer::serialize(buf);
     if (entry.is_vaild) {
-      std::string query = clickhouse_query_generator.create_subquery(entry);
+      std::string query = ClickhouseQueryGenerator::create_subquery(entry);
       pthread_mutex_lock(&write_mtx);
       insert_statements.push_front(query);
       pthread_cond_broadcast(&write_cond_var);
@@ -79,7 +73,7 @@ void *read_worker_clickhouse(void *arg) {
   pthread_exit(nullptr);
 }
 
-void *write_worker_clickhouse(void *arg) {
+void *write_worker(void *arg) {
   while (true) {
 
     int index = *((int *)arg);
@@ -97,15 +91,15 @@ void *write_worker_clickhouse(void *arg) {
 
     pthread_mutex_unlock(&write_mtx);
 
-    std::string query_string = clickhouse_query_generator.create_query(bucket);
-    db_clickhouse[index].Execute(query_string);
+    std::string query_string = ClickhouseQueryGenerator::create_query(bucket);
+    db[index].Execute(query_string);
     info("Save success.\n");
   }
   free(arg);
   pthread_exit(nullptr);
 }
 
-void *sync_worker_clickhouse(void *arg) {
+void *sync_worker(void *arg) {
   while (true) {
     sleep(TIME_TO_SAVE);
 
@@ -124,23 +118,21 @@ void *sync_worker_clickhouse(void *arg) {
 
     pthread_mutex_unlock(&write_mtx);
 
-    std::string query_string = clickhouse_query_generator.create_query(bucket);
-    db_clickhouse[0].Execute(query_string);
+    std::string query_string = ClickhouseQueryGenerator::create_query(bucket);
+    db[0].Execute(query_string);
     info("Save success.\n");
   }
 }
 
-void run_clickhouse(Config config) {
+void run(Config config) {
   for (int i = 0; i < CONN_THREADS; ++i) {
-    if (pthread_create(&conn_threads[i], NULL, *conn_worker_clickhouse, NULL) !=
-        0) {
+    if (pthread_create(&conn_threads[i], NULL, *conn_worker, NULL) != 0) {
       error("create thread failed");
     }
   }
 
   for (int i = 0; i < READ_THREADS; ++i) {
-    if (pthread_create(&read_threads[i], NULL, *read_worker_clickhouse, NULL) !=
-        0) {
+    if (pthread_create(&read_threads[i], NULL, *read_worker, NULL) != 0) {
       error("create thread failed");
     }
   }
@@ -149,7 +141,7 @@ void run_clickhouse(Config config) {
     // FIXME: this shit right here throws error
     // but cannot be caught for some reason
     // doesn't even print a debug message
-    new (&db_clickhouse[i]) clickhouse::Client(
+    new (&db[i]) clickhouse::Client(
         clickhouse::ClientOptions()
             .SetHost(config.host)
             .SetPort(config.port)
@@ -159,13 +151,13 @@ void run_clickhouse(Config config) {
 
     int *a = (int *)malloc(sizeof(int));
     *a = i;
-    if (pthread_create(&write_threads[i], nullptr, *write_worker_clickhouse,
-                       a) != 0) {
+    if (pthread_create(&write_threads[i], nullptr, *write_worker, a) != 0) {
       error("create thread failed");
     }
   }
 
-  if (pthread_create(&sync_thread, NULL, *sync_worker_clickhouse, NULL) != 0) {
+  if (pthread_create(&sync_thread, NULL, *sync_worker, NULL) != 0) {
     error("create thread failed");
   };
 }
+} // namespace Clickhouse
