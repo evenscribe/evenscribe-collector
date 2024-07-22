@@ -1,18 +1,14 @@
 #include "serializer.h"
-#include "cJSON.h"
-#include "log.h"
-#include "param.h"
-#include <string>
 
-Log parse(char *json_string) {
+Log Serializer::serialize(char *source) {
   Log log;
-  cJSON *json = cJSON_ParseWithLength(json_string, BUFFER_SIZE);
+  cJSON *json = cJSON_ParseWithLength(source, BUFFER_SIZE);
 
   log.is_vaild = true;
 
   if (json == nullptr) {
     warn("evenscribe(log): invalid json received\n");
-    warn((std::string(json_string) + "\n").c_str());
+    warn((std::string(source) + "\n").c_str());
     log.is_vaild = false;
     cJSON_Delete(json);
     return log;
@@ -137,5 +133,3 @@ Log parse(char *json_string) {
 
   return log;
 }
-
-Log Serializer::serialize(char *source) { return parse(source); }

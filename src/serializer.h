@@ -1,6 +1,9 @@
 #ifndef SERIALIZER
 #define SERIALIZER
 
+#include "json.h"
+#include "log.h"
+#include "param.h"
 #include <string>
 #include <unordered_map>
 
