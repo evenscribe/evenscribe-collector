@@ -3,10 +3,9 @@
 #include "log.h"
 #include "socket.h"
 
-#if defined(__APPLE__) && defined(__MACH__)
+#if defined(__MACH__)
 #include "service_mac.h"
-#endif
-#if defined(__linux__) || defined(__linux) || defined(linux)
+#elif defined(__linux__) || defined(__linux) || defined(linux)
 #include "service_ubuntu.h"
 #endif
 
@@ -25,17 +24,12 @@ static void parse_arguments(int argc, char **argv) {
 
 int main(int argc, char **argv) {
 
-#if defined(__APPLE__) && defined(__MACH__)
+#if defined(__MACH__) || defined(__linux__) || defined(__linux) ||             \
+    defined(linux)
   if (argc > 1) {
     parse_arguments(argc, argv);
   }
-#endif
 
-#if defined(__linux__) || defined(__linux) || defined(linux)
-  create_service_path_linux();
-  if (argc > 1) {
-    parse_arguments(argc, argv);
-  }
 #endif
 
   Config config = config_to_tuple();

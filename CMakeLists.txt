@@ -1,35 +1,14 @@
 cmake_minimum_required(VERSION 3.5)
-project(OlympusObservatory)
+project(evenscribe)
 
-set(CMAKE_CXX_STANDARD 17)
-
-# add_compile_options(-O3 -march=native -mtune=native)
-
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -pthread")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
 
-set(SOURCES
-    src/cJSON.c
-    src/main.cpp
-    src/serializer.cpp
-    src/socket.cpp
-)
+file(GLOB_RECURSE SOURCE_FILES "src/*.cpp" "src/*.c")
+file(GLOB_RECURSE HEADER_FILES "src/*.h")
 
-set(HEADERS
-    src/cJSON.h
-    src/config.h
-    src/helper.h
-    src/log.h
-    src/param.h
-    src/persistence.h
-    src/query_generator.h
-    src/serializer.h
-    src/socket.h
-)
-
-set(WITH_OPENSSL ON)
-
-add_executable(${PROJECT_NAME} ${SOURCES})
+add_executable(${PROJECT_NAME} ${SOURCE_FILES} ${HEADER_FILES})
 
 add_subdirectory(include/clickhouse-cpp-2.5.1)
 target_link_libraries(${PROJECT_NAME} PRIVATE clickhouse-cpp-lib)
