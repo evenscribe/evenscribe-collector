@@ -33,10 +33,6 @@ extern pthread_t sync_thread;
 
 extern std::shared_ptr<tao::pq::connection> *db;
 
-void *conn_worker(void *arg);
-void *read_worker(void *arg);
-void *write_worker(void *arg);
-void *sync_worker(void *arg);
 void run(Config config);
 
 } // namespace Postgres

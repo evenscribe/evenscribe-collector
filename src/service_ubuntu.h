@@ -15,10 +15,6 @@
 
 #if defined(__linux__) || defined(__linux) || defined(linux)
 
-void create_service_path_linux();
-int safe_exec(char *const argv[], bool suppress_output);
-char *populate_service(int *length);
-int service_install_internal();
 int service_start();
 int service_stop();
 

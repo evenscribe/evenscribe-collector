@@ -1,6 +1,6 @@
 #include "config.h"
 
-DatabaseKind get_database_kind(std::string database_kind_string) {
+static DatabaseKind get_database_kind(std::string database_kind_string) {
   static const std::unordered_map<std::string, DatabaseKind> database_kind_map =
       {
           {"postgres", POSTGRES},
@@ -14,7 +14,7 @@ DatabaseKind get_database_kind(std::string database_kind_string) {
   return item->second;
 }
 
-cJSON *get_json_field_value(cJSON *json, std::string field,
+static cJSON *get_json_field_value(cJSON *json, std::string field,
                             DataKind data_kind) {
   cJSON *field_value = cJSON_GetObjectItemCaseSensitive(json, field.c_str());
   switch (data_kind) {
@@ -41,7 +41,7 @@ cJSON *get_json_field_value(cJSON *json, std::string field,
   return field_value;
 }
 
-Config deserializeJsonToConfig(const std::string &jsonString) {
+static Config deserializeJsonToConfig(const std::string &jsonString) {
   Config config;
 
   cJSON *json = cJSON_Parse(jsonString.c_str());
@@ -75,7 +75,7 @@ Config deserializeJsonToConfig(const std::string &jsonString) {
   return config;
 }
 
-char *get_config_file() {
+static char *get_config_file() {
   char *home = getenv("HOME");
   if (!home) {
     error("Unable to retrieve home directory.\n");
@@ -95,12 +95,12 @@ char *get_config_file() {
   return path;
 }
 
-bool config_file_exists() {
+static bool config_file_exists() {
   char *path = get_config_file();
   return file_exists(path);
 }
 
-char *read_file(const char *filePath) {
+static char *read_file(const char *filePath) {
   FILE *file = fopen(filePath, "rb");
   if (file == NULL) {
     error("Could not open file\n");

@@ -22,7 +22,7 @@ pthread_t sync_thread;
 clickhouse::Client *db =
     (clickhouse::Client *)malloc(sizeof(clickhouse::Client) * WRITE_THREADS);
 
-void *conn_worker(void *arg) {
+static void *conn_worker(void *arg) {
   while (true) {
     pthread_mutex_lock(&conn_mtx);
     while (conn_queue.empty()) {
@@ -48,7 +48,7 @@ void *conn_worker(void *arg) {
   pthread_exit(nullptr);
 }
 
-void *read_worker(void *arg) {
+static void *read_worker(void *arg) {
   while (true) {
     pthread_mutex_lock(&read_mtx);
     while (read_queue.empty()) {
@@ -73,7 +73,7 @@ void *read_worker(void *arg) {
   pthread_exit(nullptr);
 }
 
-void *write_worker(void *arg) {
+static void *write_worker(void *arg) {
   while (true) {
 
     int index = *((int *)arg);
@@ -99,7 +99,7 @@ void *write_worker(void *arg) {
   pthread_exit(nullptr);
 }
 
-void *sync_worker(void *arg) {
+static void *sync_worker(void *arg) {
   while (true) {
     sleep(TIME_TO_SAVE);
 

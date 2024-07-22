@@ -53,7 +53,7 @@
 //          4. Running (Start / Stop)
 //
 
-int safe_exec(char *const argv[], bool suppress_output) {
+static int safe_exec(char *const argv[], bool suppress_output) {
   pid_t pid;
   posix_spawn_file_actions_t actions;
   posix_spawn_file_actions_init(&actions);
@@ -83,7 +83,7 @@ int safe_exec(char *const argv[], bool suppress_output) {
   return 1;
 }
 
-char *populate_plist_path(void) {
+static char *populate_plist_path(void) {
   char *home = getenv("HOME");
 
   if (!home) {
@@ -102,7 +102,7 @@ char *populate_plist_path(void) {
   return result;
 }
 
-char *populate_plist(int *length) {
+static char *populate_plist(int *length) {
   char *user = getenv("USER");
   if (!user) {
     error("evenscribe: 'env USER' not set! abort..\n");
@@ -134,7 +134,7 @@ char *populate_plist(int *length) {
   return result;
 }
 
-inline void ensure_directory_exists(char *evenscribe_plist_path) {
+static inline void ensure_directory_exists(char *evenscribe_plist_path) {
   //
   // NOTE(koekeishiya): Temporarily remove filename.
   // We know the filepath will contain a slash, as

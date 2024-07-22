@@ -15,11 +15,6 @@
 
 #if defined(__MACH__)
 
-char *populate_plist_path(void);
-char *populate_plist(int *length);
-void ensure_directory_exists(char *evenscribe_plist_path);
-int safe_exec(char *const argv[], bool suppress_output);
-int service_install_internal(char *evenscribe_plist_path);
 int service_start(void);
 int service_stop(void);
 

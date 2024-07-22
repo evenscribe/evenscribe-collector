@@ -20,7 +20,7 @@
   "[Install]\n"                                                                \
   "WantedBy=multi-user.target\n"
 
-void create_service_path_linux() {
+static void create_service_path_linux() {
   char *home = getenv("HOME");
   if (!home) {
     error("evenscribe: 'env HOME' not set! abort..\n");
@@ -34,7 +34,7 @@ void create_service_path_linux() {
   }
 }
 
-int safe_exec(char *const argv[], bool suppress_output) {
+static int safe_exec(char *const argv[], bool suppress_output) {
   pid_t pid;
   posix_spawn_file_actions_t actions;
   posix_spawn_file_actions_init(&actions);
@@ -66,7 +66,7 @@ int safe_exec(char *const argv[], bool suppress_output) {
   }
 }
 
-char *populate_service(int *length) {
+static char *populate_service(int *length) {
   char exe_path[4096];
   ssize_t exe_path_size =
       readlink("/proc/self/exe", exe_path, sizeof(exe_path) - 1);
@@ -89,7 +89,7 @@ char *populate_service(int *length) {
   return result;
 }
 
-int service_install_internal() {
+static int service_install_internal() {
   int evenscribe_service_length;
   char *evenscribe_service = populate_service(&evenscribe_service_length);
 

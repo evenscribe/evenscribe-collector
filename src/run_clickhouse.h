@@ -1,11 +1,11 @@
 #ifndef CLICKHOUSE_HANDLER_H
 #define CLICKHOUSE_HANDLER_H
 
-#include "query_generator_clickhouse.h"
 #include "config.h"
 #include "helper.h"
 #include "log.h"
 #include "param.h"
+#include "query_generator_clickhouse.h"
 #include <clickhouse/client.h>
 #include <deque>
 #include <pthread.h>
@@ -32,10 +32,6 @@ extern pthread_t sync_thread;
 
 extern clickhouse::Client *db;
 
-void *conn_worker(void *arg);
-void *read_worker(void *arg);
-void *write_worker(void *arg);
-void *sync_worker(void *arg);
 void run(Config config);
 
 } // namespace Clickhouse
