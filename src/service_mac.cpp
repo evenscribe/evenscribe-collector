@@ -5,7 +5,7 @@
 #define MAXLEN 512
 #define _PATH_LAUNCHCTL "/bin/launchctl"
 #define _NAME_EVENSCRIBE_PLIST "com.evenscribe.app"
-#define _PATH_EVENSCRIBE_PLIST "%s/Library/LaunchAgents/com.evenscribe.plist"
+#define _PATH_EVENSCRIBE_PLIST "%s/Library/LaunchAgents/com.evenscribe.app.plist"
 
 #define _EVENSCRIBE_PLIST                                                      \
   "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"                               \
@@ -134,7 +134,7 @@ static char *populate_plist(int *length) {
   return result;
 }
 
-static inline void ensure_directory_exists(char *evenscribe_plist_path) {
+static void ensure_directory_exists(char *evenscribe_plist_path) {
   //
   // NOTE(koekeishiya): Temporarily remove filename.
   // We know the filepath will contain a slash, as
@@ -156,7 +156,7 @@ static inline void ensure_directory_exists(char *evenscribe_plist_path) {
   *last_slash = '/';
 }
 
-int service_install_internal(char *evenscribe_plist_path) {
+static int service_install_internal(char *evenscribe_plist_path) {
   int evenscribe_plist_length;
   char *evenscribe_plist = populate_plist(&evenscribe_plist_length);
   ensure_directory_exists(evenscribe_plist_path);
