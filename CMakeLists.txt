@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.5)
-project(evenscribe)
+set(PROJECT_VERSION 0.1)
+project(evenscribe-collector VERSION ${PROJECT_VERSION})
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -pthread")
@@ -15,3 +16,5 @@ target_link_libraries(${PROJECT_NAME} PRIVATE clickhouse-cpp-lib)
 
 add_subdirectory(include/taopq-1.0.0)
 target_link_libraries(${PROJECT_NAME} PRIVATE taopq)
+
+install(TARGETS ${PROJECT_NAME} DESTINATION bin)
