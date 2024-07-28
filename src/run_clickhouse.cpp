@@ -5,19 +5,19 @@ extern std::deque<connection_t *> conn_queue;
 extern pthread_mutex_t conn_mtx;
 extern pthread_cond_t conn_cond_var;
 
+extern std::deque<char *> read_queue;
+extern pthread_t read_threads[READ_THREADS];
+extern pthread_mutex_t read_mtx;
+extern pthread_cond_t read_cond_var;
+
+extern std::deque<std::string> insert_statements;
+extern pthread_t write_threads[WRITE_THREADS];
+extern pthread_mutex_t write_mtx;
+extern pthread_cond_t write_cond_var;
+
+extern pthread_t sync_thread;
+
 namespace Clickhouse {
-
-std::deque<char *> read_queue;
-pthread_t read_threads[READ_THREADS];
-pthread_mutex_t read_mtx;
-pthread_cond_t read_cond_var;
-
-std::deque<std::string> insert_statements;
-pthread_t write_threads[WRITE_THREADS];
-pthread_mutex_t write_mtx;
-pthread_cond_t write_cond_var;
-
-pthread_t sync_thread;
 
 clickhouse::Client *db =
     (clickhouse::Client *)malloc(sizeof(clickhouse::Client) * WRITE_THREADS);
