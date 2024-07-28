@@ -4,6 +4,7 @@
 #include "helper.h"
 #include "json.h"
 #include "log.h"
+#include <cstring>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string>

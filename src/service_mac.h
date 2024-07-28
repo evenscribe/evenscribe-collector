@@ -1,6 +1,8 @@
 #ifndef SERVICE_MAC_H
 #define SERVICE_MAC_H
 
+#if defined(__MACH__)
+
 #include "helper.h"
 #include "log.h"
 #include <cerrno>
@@ -12,8 +14,6 @@
 #include <sys/fcntl.h>
 #include <sys/stat.h>
 #include <unistd.h>
-
-#if defined(__MACH__)
 
 int service_start(void);
 int service_stop(void);

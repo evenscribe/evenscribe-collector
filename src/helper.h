@@ -3,6 +3,7 @@
 #define HELPER_H
 
 #include "param.h"
+#include <cstring>
 #include <deque>
 #include <sstream>
 #include <stdlib.h>
