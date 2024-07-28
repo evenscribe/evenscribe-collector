@@ -93,7 +93,7 @@ static void *write_worker(void *arg) {
 
     std::string query_string = ClickhouseQueryGenerator::create_query(bucket);
     db[index].Execute(query_string);
-    info("Save success.\n");
+    info("evenscribe: Save success.\n");
   }
   free(arg);
   pthread_exit(nullptr);
@@ -120,7 +120,7 @@ static void *sync_worker(void *arg) {
 
     std::string query_string = ClickhouseQueryGenerator::create_query(bucket);
     db[0].Execute(query_string);
-    info("Save success.\n");
+    info("evenscribe: Save success.\n");
   }
 }
 

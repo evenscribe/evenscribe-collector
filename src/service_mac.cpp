@@ -5,7 +5,8 @@
 #define MAXLEN 512
 #define _PATH_LAUNCHCTL "/bin/launchctl"
 #define _NAME_EVENSCRIBE_PLIST "com.evenscribe.app"
-#define _PATH_EVENSCRIBE_PLIST "%s/Library/LaunchAgents/com.evenscribe.app.plist"
+#define _PATH_EVENSCRIBE_PLIST                                                 \
+  "%s/Library/LaunchAgents/com.evenscribe.app.plist"
 
 #define _EVENSCRIBE_PLIST                                                      \
   "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"                               \

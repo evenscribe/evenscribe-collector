@@ -15,7 +15,7 @@ static DatabaseKind get_database_kind(std::string database_kind_string) {
 }
 
 static cJSON *get_json_field_value(cJSON *json, std::string field,
-                            DataKind data_kind) {
+                                   DataKind data_kind) {
   cJSON *field_value = cJSON_GetObjectItemCaseSensitive(json, field.c_str());
   switch (data_kind) {
   case STRING: {
@@ -133,9 +133,15 @@ static char *read_file(const char *filePath) {
 }
 
 Config config_to_tuple() {
+  char *home = getenv("HOME");
+  if (!home) {
+    error("Unable to retrieve home directory.\n");
+  }
+
   if (!config_file_exists()) {
     error("evenscribe(config): config file doesn't exist : "
-          "$HOME/.evenscriberc\n");
+          "%s/.evenscriberc\n",
+          home);
   }
 
   char *path = get_config_file();

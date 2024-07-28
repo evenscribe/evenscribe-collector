@@ -62,12 +62,12 @@ Socket::Socket(Config config) {
 
 void Socket::handle_message() {
   while (true) {
-    warn("Waiting for connection...\n");
+    warn("evenscribe: Waiting for connection...\n");
 
     int client_socket = accept(server_socket, NULL, NULL);
 
     if (client_socket == -1) {
-      warn("accept connection failed");
+      warn("evenscribe(system): accept connection failed");
       continue;
     }
 

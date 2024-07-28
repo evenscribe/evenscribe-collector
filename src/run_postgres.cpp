@@ -94,7 +94,7 @@ static void *write_worker(void *arg) {
 
     std::string query_string = PostgresQueryGenerator::create_query(bucket);
     db[index]->execute(query_string);
-    info("Save success.\n");
+    info("evenscribe: Save success.\n");
   }
 
   free(arg);
@@ -122,7 +122,7 @@ static void *sync_worker(void *arg) {
 
     std::string query_string = PostgresQueryGenerator::create_query(bucket);
     db[0]->execute(query_string);
-    info("Save success.\n");
+    info("evenscribe: Save success.\n");
   }
 }
 
