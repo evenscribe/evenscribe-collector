@@ -17,7 +17,7 @@ std::string unorderedMapToString(const std::unordered_map<K, V> &map) {
 
 static std::string getValues(const Log &entry) {
   std::deque<std::string> bucket = {
-      std::to_string(entry.Timestamp),
+      between("to_timestamp(", std::to_string(entry.Timestamp), ")"),
       wrap(entry.TraceId, "'"),
       wrap(entry.SpanId, "'"),
       std::to_string(entry.TraceFlags),
