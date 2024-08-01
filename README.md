@@ -21,6 +21,6 @@
 
 |Language|Link|
 |---|--|
-|Go|[evenscribe-js](https://github.com/evenscribe/evenscribe-go)|
-|Javascript/Typescript|[evenscribe-go](https://github.com/evenscribe/evenscribe-js)|
+|Go|[evenscribe-go](https://github.com/evenscribe/evenscribe-go)|
+|Javascript/Typescript|[evenscribe-js](https://github.com/evenscribe/evenscribe-js)|
 |Rust|[evenscribe-rs](https://github.com/evenscribe/Olympus.rs)|
